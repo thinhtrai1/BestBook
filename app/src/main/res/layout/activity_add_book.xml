@@ -17,9 +17,9 @@
 
         <Spinner
             android:id="@+id/spnClass"
-            android:elevation="@dimen/margin_4"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:elevation="@dimen/margin_4" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -53,45 +53,57 @@
             android:id="@+id/edtBookName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="textCapSentences"
             android:layout_marginTop="@dimen/margin_16"
             android:hint="Book name"
+            android:inputType="textCapSentences"
             android:textColor="@color/black"
             android:textSize="@dimen/text_large" />
 
-        <Button
-            android:id="@+id/btnSelectFile"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/margin_16"
-            android:text="Select book"
-            android:textAllCaps="false"
-            android:textColor="@color/black"
-            android:textSize="@dimen/text_large" />
+            android:gravity="center_vertical">
 
-        <ImageView
-            android:id="@+id/imvFileSelected"
-            android:layout_width="wrap_content"
-            android:visibility="invisible"
-            android:layout_height="wrap_content"
-            android:src="@android:drawable/checkbox_on_background" />
+            <Button
+                android:id="@+id/btnSelectFile"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Select book"
+                android:textAllCaps="false"
+                android:textColor="@color/black"
+                android:textSize="@dimen/text_large" />
 
-        <Button
-            android:id="@+id/btnSelectImage"
-            android:layout_width="wrap_content"
+            <TextView
+                android:id="@+id/tvFileName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:textColor="@color/black"
+                android:textSize="@dimen/text_large" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/margin_16"
-            android:text="Select image"
-            android:textAllCaps="false"
-            android:textColor="@color/black"
-            android:textSize="@dimen/text_large" />
+            android:gravity="center_vertical">
 
-        <ImageView
-            android:id="@+id/imvImageSelected"
-            android:layout_width="wrap_content"
-            android:visibility="invisible"
-            android:layout_height="wrap_content"
-            android:src="@android:drawable/checkbox_on_background" />
+            <Button
+                android:id="@+id/btnSelectImage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Select image"
+                android:textAllCaps="false"
+                android:textColor="@color/black"
+                android:textSize="@dimen/text_large" />
+
+            <ImageView
+                android:id="@+id/imvImage"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:adjustViewBounds="true" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/btnAddBook"

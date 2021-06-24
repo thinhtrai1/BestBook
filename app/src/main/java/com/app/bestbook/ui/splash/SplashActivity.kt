@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import androidx.appcompat.app.AppCompatActivity
-import com.app.bestbook.ui.addBook.AddBookActivity
 import com.app.bestbook.ui.home.HomeActivity
 
 class SplashActivity : AppCompatActivity() {
@@ -13,8 +12,7 @@ class SplashActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         Handler(Looper.getMainLooper()).postDelayed({
-//            startActivity(Intent(this, HomeActivity::class.java))
-            startActivity(Intent(this, AddBookActivity::class.java))
+            startActivity(Intent(this, HomeActivity::class.java))
             finish()
         }, 500)
     }

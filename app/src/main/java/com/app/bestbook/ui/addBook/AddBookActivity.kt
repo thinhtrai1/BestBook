@@ -3,16 +3,16 @@ package com.app.bestbook.ui.addBook
 import android.Manifest
 import android.app.Dialog
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import com.app.bestbook.R
 import com.app.bestbook.base.BaseActivity
@@ -20,18 +20,23 @@ import com.app.bestbook.databinding.ActivityAddBookBinding
 import com.app.bestbook.databinding.ProgressDialogCustomBinding
 import com.app.bestbook.model.Book
 import com.app.bestbook.model.Subject
+import com.app.bestbook.util.isPermissionGranted
 import com.app.bestbook.util.showToast
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
+import java.util.*
+import kotlin.collections.ArrayList
 
 class AddBookActivity : BaseActivity() {
     private lateinit var mBinding: ActivityAddBookBinding
     private val mSubjectData = ArrayList<List<Subject>>()
     private var mFileUri: Uri? = null
     private var mImageUri: Uri? = null
-    private val mDatabaseReference = Firebase.database("https://bestbook-93f2f-default-rtdb.asia-southeast1.firebasedatabase.app/").reference
-    private val mStorageReference = Firebase.storage.reference.child("book")
+    private val mDatabaseReference = Firebase.database("https://bestbook-93f2f-default-rtdb.asia-southeast1.firebasedatabase.app/").reference.child("data")
+    private val mStorageReference = Firebase.storage.reference
+    private var mBookUrl: String? = null
+    private var mImageUrl: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,19 +60,27 @@ class AddBookActivity : BaseActivity() {
             }
 
             btnSelectFile.setOnClickListener {
-                if (ContextCompat.checkSelfPermission(this@AddBookActivity, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                if (isPermissionGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
                     ActivityCompat.requestPermissions(this@AddBookActivity, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 100)
                 } else {
                     openFile()
                 }
             }
 
+            btnSelectImage.setOnClickListener {
+                if (isPermissionGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                    pickImage()
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 101)
+                }
+            }
+
             btnAddBook.setOnClickListener {
                 val classSelected = spnClass.selectedItemPosition
-                if (mFileUri == null || classSelected == 0 || edtBookName.text.isBlank()) {
+                if (mFileUri == null || mImageUri == null || classSelected == 0 || edtBookName.text.isBlank()) {
                     showToast("missing information")
                 } else {
-                    val subjectSelected = mSubjectData[classSelected][spnSubject.selectedItemPosition].id
+                    val subjectSelected = mSubjectData[classSelected - 1][spnSubject.selectedItemPosition].id
                     val binding: ProgressDialogCustomBinding
                     val progressDialog = Dialog(this@AddBookActivity).apply {
                         binding = ProgressDialogCustomBinding.inflate(LayoutInflater.from(this@AddBookActivity))
@@ -78,9 +91,10 @@ class AddBookActivity : BaseActivity() {
                         binding.tvMessage.text = getString(R.string.saving_book)
                     }
                     val reference = mStorageReference
+                        .child("book")
                         .child(classSelected.toString())
                         .child(subjectSelected)
-                        .child(mFileUri!!.lastPathSegment!!)
+                        .child(tvFileName.text.toString())
                     reference.putFile(mFileUri!!)
                         .addOnProgressListener {
                             binding.progressBarDownload.progress = 100f * it.bytesTransferred / it.totalByteCount
@@ -91,19 +105,24 @@ class AddBookActivity : BaseActivity() {
                         }
                         .addOnSuccessListener {
                             reference.downloadUrl.addOnSuccessListener {
-                                val subjectRef = mDatabaseReference
-                                    .child(classSelected.toString())
-                                    .child(subjectSelected)
-                                subjectRef.child("name").setValue(mSubjectData[classSelected][spnSubject.selectedItemPosition].name)
-                                subjectRef.child("books").push().setValue(Book(edtBookName.text.toString().trim(), it.toString(), spnStartPage.selectedItemPosition))
-                                progressDialog.dismiss()
-                                mFileUri = null
-                                mImageUri = null
-                                mBinding.imvFileSelected.visibility = View.INVISIBLE
-                                mBinding.imvImageSelected.visibility = View.INVISIBLE
-                                mBinding.spnClass.setSelection(0)
-                                mBinding.spnStartPage.setSelection(0)
-                                mBinding.edtBookName.text = null
+                                mBookUrl = it.toString()
+                                if (mImageUrl != null) {
+                                    addBook(classSelected, subjectSelected, progressDialog)
+                                }
+                            }
+                        }
+                    mStorageReference
+                        .child("image")
+                        .child(classSelected.toString())
+                        .child(subjectSelected)
+                        .child(Calendar.getInstance().timeInMillis.toString()).apply {
+                            putFile(mImageUri!!).addOnSuccessListener {
+                                downloadUrl.addOnSuccessListener {
+                                    mImageUrl = it.toString()
+                                    if (mBookUrl != null) {
+                                        addBook(classSelected, subjectSelected, progressDialog)
+                                    }
+                                }
                             }
                         }
                 }
@@ -114,8 +133,32 @@ class AddBookActivity : BaseActivity() {
 
         intent.getParcelableExtra<Uri?>(Intent.EXTRA_STREAM)?.let {
             mFileUri = it
-            mBinding.imvFileSelected.visibility = View.VISIBLE
+            mBinding.tvFileName.text = mFileUri!!.lastPathSegment
         }
+    }
+
+    private fun addBook(classSelected: Int, subjectSelected: String, progressDialog: Dialog) {
+        val subjectRef = mDatabaseReference
+            .child(classSelected.toString())
+            .child(subjectSelected)
+        subjectRef.child("name").setValue(mSubjectData[classSelected - 1][mBinding.spnSubject.selectedItemPosition].name)
+        subjectRef.child("books").push().setValue(
+            Book(
+                mBinding.edtBookName.text.toString().trim(),
+                mBookUrl!!,
+                mImageUrl!!,
+                mBinding.spnStartPage.selectedItemPosition,
+                Calendar.getInstance().timeInMillis
+            )
+        )
+        progressDialog.dismiss()
+        mFileUri = null
+        mImageUri = null
+        mBinding.tvFileName.text = ""
+        mBinding.imvImage.setImageResource(0)
+        mBinding.spnClass.setSelection(0)
+        mBinding.spnStartPage.setSelection(0)
+        mBinding.edtBookName.text = null
     }
 
     private fun openFile() {
@@ -124,9 +167,38 @@ class AddBookActivity : BaseActivity() {
 
     private val startPdfFileForResult = registerForActivityResult(ActivityResultContracts.OpenDocument()) {
         it?.let {
+            contentResolver.query(it, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                cursor.moveToFirst()
+                mBinding.tvFileName.text = cursor.getString(nameIndex)
+            }
             mFileUri = it
-            mBinding.imvFileSelected.visibility = View.VISIBLE
         }
+    }
+
+    private fun pickImage() {
+        mPickForResult.launch("image/*")
+    }
+
+    private val mPickForResult = registerForActivityResult(ActivityResultContracts.GetContent()) {
+        it?.let {
+            editImage(it)
+        }
+    }
+
+    private fun editImage(uri: Uri) {
+        mImageUri = uri
+        val editIntent = Intent(Intent.ACTION_EDIT)
+            .setDataAndType(uri, "image/*")
+            .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        mEditForResult.launch(Intent.createChooser(editIntent, "Edit your photo"))
+    }
+
+    private val mEditForResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        result.data?.data?.let {
+            mImageUri = it
+        }
+        mBinding.imvImage.setImageURI(mImageUri)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -134,41 +206,46 @@ class AddBookActivity : BaseActivity() {
         if (grantResults.isNotEmpty()) {
             when (requestCode) {
                 100 -> openFile()
+                101 -> pickImage()
             }
         }
     }
 
     private fun generateData() {
         for (i in 1..3) {
-            mSubjectData.add(listOf(
-                Subject("toan", "Toán"),
-                Subject("tiengviet", "Tiếng Việt"),
-                Subject("tienganh", "Tiếng Anh"),
-                Subject("tunhienvaxahoi", "Tự nhiên và Xã hội"),
-                Subject("amnhac", "Âm nhạc"),
-                Subject("mythuat", "Mỹ thuật"),
-                Subject("daoduc", "Đạo đức"),
-                Subject("theduc", "Thể dục"),
-                Subject("tinhoc", "Tin học"),
-                Subject("congnghe", "Công nghệ")
-            ))
+            mSubjectData.add(
+                listOf(
+                    Subject("toan", "Toán"),
+                    Subject("tiengviet", "Tiếng Việt"),
+                    Subject("tienganh", "Tiếng Anh"),
+                    Subject("tunhienvaxahoi", "Tự nhiên và Xã hội"),
+                    Subject("amnhac", "Âm nhạc"),
+                    Subject("mythuat", "Mỹ thuật"),
+                    Subject("daoduc", "Đạo đức"),
+                    Subject("theduc", "Thể dục"),
+                    Subject("tinhoc", "Tin học"),
+                    Subject("congnghe", "Công nghệ")
+                )
+            )
         }
         for (i in 4..5) {
-            mSubjectData.add(listOf(
-                Subject("toan", "Toán"),
-                Subject("tiengviet", "Tiếng Việt"),
-                Subject("tienganh", "Tiếng Anh"),
-                Subject("tunhienvaxahoi", "Tự nhiên và Xã hội"),
-                Subject("khoahoc", "Khoa học"),
-                Subject("lichsu", "Lịch sử"),
-                Subject("dialy", "Địa lý"),
-                Subject("amnhac", "Âm nhạc"),
-                Subject("mythuat", "Mỹ thuật"),
-                Subject("daoduc", "Đạo đức"),
-                Subject("theduc", "Thể dục"),
-                Subject("tinhoc", "Tin học"),
-                Subject("congnghe", "Công nghệ")
-            ))
+            mSubjectData.add(
+                listOf(
+                    Subject("toan", "Toán"),
+                    Subject("tiengviet", "Tiếng Việt"),
+                    Subject("tienganh", "Tiếng Anh"),
+                    Subject("tunhienvaxahoi", "Tự nhiên và Xã hội"),
+                    Subject("khoahoc", "Khoa học"),
+                    Subject("lichsu", "Lịch sử"),
+                    Subject("dialy", "Địa lý"),
+                    Subject("amnhac", "Âm nhạc"),
+                    Subject("mythuat", "Mỹ thuật"),
+                    Subject("daoduc", "Đạo đức"),
+                    Subject("theduc", "Thể dục"),
+                    Subject("tinhoc", "Tin học"),
+                    Subject("congnghe", "Công nghệ")
+                )
+            )
         }
         for (i in 6..9) {
             mSubjectData.add(
