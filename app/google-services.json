@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "222099276112",
+    "project_id": "bestbook-93f2f",
+    "storage_bucket": "bestbook-93f2f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:222099276112:android:bc1654ac7ae9e16840ac55",
+        "android_client_info": {
+          "package_name": "com.app.bestbook"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "222099276112-481epdc6p86aufntv6t970e0176s63es.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.bestbook",
+            "certificate_hash": "eebddf4921cb6a77030323bc203ee8958914d9ca"
+          }
+        },
+        {
+          "client_id": "222099276112-bba45qfuvnvn1bfidbvb6n25r1cknuja.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0K1FprBxRDvajJXHj5_T9AhsXTW8dUNY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "222099276112-bba45qfuvnvn1bfidbvb6n25r1cknuja.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

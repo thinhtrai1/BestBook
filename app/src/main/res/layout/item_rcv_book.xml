@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/margin_8"
+        app:cardCornerRadius="@dimen/margin_4"
+        app:cardElevation="@dimen/margin_4">
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"
+            android:src="@drawable/tieng_viet_1" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="@color/green"
+            android:gravity="center"
+            android:paddingVertical="@dimen/margin_8"
+            android:text="Tập 1"
+            android:textColor="@color/white"
+            android:textSize="@dimen/text_large" />
+    </androidx.cardview.widget.CardView>
+</layout>

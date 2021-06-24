@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">VBooks</string>
+    <string name="please_wait">Please wait…</string>
+    <string name="class_format">Lớp %1$d</string>
+    <string name="my_book">Sách của bé</string>
+    <string name="my_class">Lớp của bé</string>
+    <string name="my_subject">Môn của bé</string>
+    <string name="loading_data">Đang tải dữ liệu…</string>
+</resources>
