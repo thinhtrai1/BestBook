@@ -29,6 +29,7 @@ class AddBookActivity : BaseActivity() {
     private lateinit var mBinding: ActivityAddBookBinding
     private val mSubjectData = ArrayList<List<Subject>>()
     private var mFileUri: Uri? = null
+    private var mImageUri: Uri? = null
     private val mDatabaseReference = Firebase.database("https://bestbook-93f2f-default-rtdb.asia-southeast1.firebasedatabase.app/").reference
     private val mStorageReference = Firebase.storage.reference.child("book")
 
@@ -63,7 +64,7 @@ class AddBookActivity : BaseActivity() {
 
             btnAddBook.setOnClickListener {
                 val classSelected = spnClass.selectedItemPosition
-                if (mFileUri == null || classSelected == 0 || edtBookName.text.isNullOrBlank()) {
+                if (mFileUri == null || classSelected == 0 || edtBookName.text.isBlank()) {
                     showToast("missing information")
                 } else {
                     val subjectSelected = mSubjectData[classSelected][spnSubject.selectedItemPosition].id
@@ -74,6 +75,7 @@ class AddBookActivity : BaseActivity() {
                         setCancelable(false)
                         window!!.setBackgroundDrawableResource(android.R.color.transparent)
                         show()
+                        binding.tvMessage.text = getString(R.string.saving_book)
                     }
                     val reference = mStorageReference
                         .child(classSelected.toString())
@@ -95,6 +97,13 @@ class AddBookActivity : BaseActivity() {
                                 subjectRef.child("name").setValue(mSubjectData[classSelected][spnSubject.selectedItemPosition].name)
                                 subjectRef.child("books").push().setValue(Book(edtBookName.text.toString().trim(), it.toString(), spnStartPage.selectedItemPosition))
                                 progressDialog.dismiss()
+                                mFileUri = null
+                                mImageUri = null
+                                mBinding.imvFileSelected.visibility = View.INVISIBLE
+                                mBinding.imvImageSelected.visibility = View.INVISIBLE
+                                mBinding.spnClass.setSelection(0)
+                                mBinding.spnStartPage.setSelection(0)
+                                mBinding.edtBookName.text = null
                             }
                         }
                 }

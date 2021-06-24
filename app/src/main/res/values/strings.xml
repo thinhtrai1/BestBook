@@ -6,4 +6,5 @@
     <string name="my_class">Lớp của bé</string>
     <string name="my_subject">Môn của bé</string>
     <string name="loading_data">Đang tải dữ liệu…</string>
+    <string name="saving_book">Đang lưu sách…</string>
 </resources>

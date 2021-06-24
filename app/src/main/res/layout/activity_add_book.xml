@@ -53,6 +53,7 @@
             android:id="@+id/edtBookName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:inputType="textCapSentences"
             android:layout_marginTop="@dimen/margin_16"
             android:hint="Book name"
             android:textColor="@color/black"
