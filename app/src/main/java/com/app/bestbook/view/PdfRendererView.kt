@@ -49,6 +49,8 @@ class PdfRendererView(private val mContext: Context, attrs: AttributeSet?) : Rec
 
     fun getFilePath() = mFilePath
 
+    fun getTotalPage() = mAdapter.itemCount
+
     fun renderUrl(url: String) {
         mAdapter.listener?.onDownloadProgress(0)
         GlobalScope.launch(Dispatchers.IO) {

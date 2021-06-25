@@ -18,10 +18,10 @@
             app:srcCompat="@drawable/splash_launcher" />
 
         <TextView
-            android:id="@+id/tvSelectImage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/select_image"
+            android:onClick="@{() -> imvAvatar.performClick()}"
             android:layout_gravity="center_horizontal"
             android:textColor="@color/black"
             android:textSize="@dimen/text_large"

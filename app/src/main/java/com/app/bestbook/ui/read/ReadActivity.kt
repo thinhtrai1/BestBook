@@ -2,12 +2,13 @@ package com.app.bestbook.ui.read
 
 import android.app.Dialog
 import android.os.Bundle
-import android.view.LayoutInflater
+import android.view.*
 import androidx.activity.viewModels
 import androidx.databinding.DataBindingUtil
 import com.app.bestbook.R
 import com.app.bestbook.base.BaseActivity
 import com.app.bestbook.databinding.ActivityReadBinding
+import com.app.bestbook.databinding.DialogSelectPageBinding
 import com.app.bestbook.databinding.ProgressDialogCustomBinding
 import com.app.bestbook.util.showToast
 import com.app.bestbook.view.PdfRendererView
@@ -53,6 +54,45 @@ class ReadActivity : BaseActivity() {
         } else {
             mBinding.pdfView.renderFile(File(mViewModel.pdfFile!!))
         }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.menu_select_page -> showSelectPage()
+        }
+        return true
+    }
+
+    private fun showSelectPage() {
+        if (mViewModel.dialogSelectPage == null) {
+            mViewModel.dialogSelectPage = Dialog(this).apply {
+                setContentView(DialogSelectPageBinding.inflate(LayoutInflater.from(this@ReadActivity)).apply {
+                    tvTotalPage.text = "/".plus(mBinding.pdfView.getTotalPage())
+                    tvFirstPage.setOnClickListener {
+                        dismiss()
+                        mBinding.pdfView.scrollToPosition(0)
+                    }
+                    btnOk.setOnClickListener {
+                        dismiss()
+                        edtPageNumber.text.toString().toIntOrNull()?.let {
+                            mBinding.pdfView.scrollToPosition(it)
+                        }
+                        edtPageNumber.setText("")
+                    }
+                    tvLastPage.setOnClickListener {
+                        dismiss()
+                        mBinding.pdfView.scrollToPosition(mBinding.pdfView.getTotalPage() - 1)
+                    }
+                }.root)
+                window!!.setBackgroundDrawableResource(android.R.color.transparent)
+            }
+        }
+        mViewModel.dialogSelectPage!!.show()
     }
 
     override fun onDestroy() {

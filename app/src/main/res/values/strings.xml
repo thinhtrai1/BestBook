@@ -30,4 +30,8 @@
     <string name="from_gallery">Chọn từ thư viện</string>
     <string name="take_a_picture">Chụp ảnh</string>
     <string name="select_other_username_message">Tên đăng nhập đã tồn tại, vui lòng chọn tên khác!</string>
+    <string name="select_page">Chọn trang</string>
+    <string name="first_page">Trang đầu</string>
+    <string name="page_number">Số trang</string>
+    <string name="last_page">Trang cuối</string>
 </resources>

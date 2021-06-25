@@ -89,9 +89,6 @@ class RegisterActivity: BaseActivity() {
             }
         }
 
-        mBinding.tvSelectImage.setOnClickListener {
-            mBinding.imvAvatar.performClick()
-        }
         mBinding.imvAvatar.setOnClickListener {
             AlertDialog.Builder(this)
                 .setPositiveButton(getString(R.string.from_gallery)) { _, _ ->
