@@ -19,7 +19,10 @@ class BookActivity : BaseActivity() {
         mBinding.viewModel = mViewModel
         mViewModel.adapter.onClickListener = {
             startActivity(
-                Intent(this, ReadActivity::class.java).putExtra("data", it).putExtra("subject", mViewModel.subject)
+                Intent(this, ReadActivity::class.java)
+                    .putExtra("data", it)
+                    .putExtra("grade", mViewModel.grade)
+                    .putExtra("subject", mViewModel.subject)
             )
         }
     }

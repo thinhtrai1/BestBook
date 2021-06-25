@@ -24,7 +24,7 @@ class ReadActivity : BaseActivity() {
             showToast(getString(R.string.data_error))
             return
         }
-        supportActionBar?.title = mViewModel.subject + " - " + mViewModel.book!!.name
+        supportActionBar?.title = mViewModel.subject + " " + mViewModel.grade + " - " + mViewModel.book!!.name
 
         if (mViewModel.pdfFile == null) {
             val binding: ProgressDialogCustomBinding

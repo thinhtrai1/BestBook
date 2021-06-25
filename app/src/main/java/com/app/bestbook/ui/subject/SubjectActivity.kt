@@ -25,6 +25,7 @@ class SubjectActivity : BaseActivity() {
                 startActivity(
                     Intent(this, BookActivity::class.java)
                         .putExtra("data", books as Serializable)
+                        .putExtra("grade", mViewModel.grade)
                         .putExtra("subject", it.name)
                 )
             } else {

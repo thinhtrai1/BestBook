@@ -1,18 +1,22 @@
 package com.app.bestbook.ui.home
 
 import android.app.AlertDialog
+import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.transition.ChangeBounds
 import android.transition.TransitionManager
+import android.view.LayoutInflater
 import android.view.View
 import androidx.activity.viewModels
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.databinding.DataBindingUtil
+import androidx.recyclerview.widget.RecyclerView
 import com.app.bestbook.R
 import com.app.bestbook.base.BaseActivity
 import com.app.bestbook.databinding.ActivityHomeBinding
+import com.app.bestbook.databinding.DialogAboutBinding
 import com.app.bestbook.model.Subject
 import com.app.bestbook.model.User
 import com.app.bestbook.ui.addBook.AddBookActivity
@@ -90,6 +94,17 @@ class HomeActivity : BaseActivity() {
                         recreate()
                     }.show()
             }
+            viewAbout.setOnClickListener {
+                val binding = DialogAboutBinding.inflate(LayoutInflater.from(this@HomeActivity))
+                Dialog(this@HomeActivity).apply {
+                    setContentView(binding.root)
+                    binding.btnOk.setOnClickListener {
+                        dismiss()
+                    }
+                    window?.attributes?.width = RecyclerView.LayoutParams.MATCH_PARENT
+                    show()
+                }
+            }
         }
 
         if (!sharedPreferencesHelper[Constant.PREF_EMAIL].isNullOrBlank() && !sharedPreferencesHelper[Constant.PREF_PASSWORD].isNullOrBlank()) {
@@ -115,7 +130,9 @@ class HomeActivity : BaseActivity() {
                             }
                         }
                         startActivity(
-                            Intent(this@HomeActivity, SubjectActivity::class.java).putExtra("data", data as Serializable)
+                            Intent(this@HomeActivity, SubjectActivity::class.java)
+                                .putExtra("data", data as Serializable)
+                                .putExtra("grade", grade.toString())
                         )
                     } else {
                         showToast(getString(R.string.no_data))

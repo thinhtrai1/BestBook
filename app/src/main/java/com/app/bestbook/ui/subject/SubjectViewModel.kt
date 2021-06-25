@@ -7,4 +7,5 @@ import java.io.Serializable
 
 class SubjectViewModel(savedStateHandle: SavedStateHandle) : BaseViewModel() {
     val adapter = SubjectRcvAdapter(savedStateHandle.get<Serializable>("data") as List<Subject>)
+    val grade = savedStateHandle.get<String>("grade")
 }
