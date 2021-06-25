@@ -10,6 +10,7 @@
     <string name="login">Đăng nhập</string>
     <string name="logout">Đăng xuất</string>
     <string name="register">Đăng ký</string>
+    <string name="register_successfully">Đăng ký thành công!</string>
     <string name="notification">Thông báo</string>
     <string name="username">Tên đăng nhập</string>
     <string name="password">Mật khẩu</string>

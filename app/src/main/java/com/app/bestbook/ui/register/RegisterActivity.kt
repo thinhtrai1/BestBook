@@ -124,6 +124,7 @@ class RegisterActivity: BaseActivity() {
             )
             .addOnSuccessListener {
                 mViewModel.sharedPreferencesHelper.set(Constant.PREF_EMAIL, email)[Constant.PREF_PASSWORD] = password
+                showToast(getString(R.string.register_successfully))
                 progressDialog.dismiss()
                 startActivity(
                     Intent(this, HomeActivity::class.java)

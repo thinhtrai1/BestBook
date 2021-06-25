@@ -189,8 +189,8 @@ class HomeActivity : BaseActivity() {
                         it.image?.let { url ->
                             Picasso.get().load(url).into(imvAvatar)
                         }
-                        viewLogin.visibility = View.GONE
                         viewLogout.visibility = View.VISIBLE
+                        viewLogin.visibility = View.GONE
                         mViewModel.sharedPreferencesHelper.set(Constant.PREF_EMAIL, email)[Constant.PREF_PASSWORD] = password
                     }
                     imvCloseLogin.performClick()
