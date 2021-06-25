@@ -1,8 +1,11 @@
 package com.app.bestbook.ui.home
 
 import com.app.bestbook.base.BaseViewModel
+import com.app.bestbook.util.SharedPreferencesHelper
 
 class HomeViewModel : BaseViewModel() {
+    val sharedPreferencesHelper = SharedPreferencesHelper()
+
     val adapter1 = HomeRcvAdapter(listOf(1, 2, 3, 4, 5)) {
         getData(it)
     }

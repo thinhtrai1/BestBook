@@ -24,7 +24,6 @@ import com.app.bestbook.ui.register.RegisterActivity
 import com.app.bestbook.ui.subject.SubjectActivity
 import com.app.bestbook.ui.updateSubject.UpdateSubjectActivity
 import com.app.bestbook.util.Constant
-import com.app.bestbook.util.SharedPreferencesHelper
 import com.app.bestbook.util.email
 import com.app.bestbook.util.showToast
 import com.google.firebase.auth.FirebaseUser
@@ -41,7 +40,6 @@ class HomeActivity : BaseActivity() {
     private lateinit var mBinding: ActivityHomeBinding
     private val mViewModel: HomeViewModel by viewModels()
     private val mConstraintSet = ConstraintSet()
-    private val sharedPreferencesHelper = SharedPreferencesHelper()
     private val mFirebaseDatabase = Firebase.database(Constant.FIREBASE_DATABASE).reference
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,7 +71,7 @@ class HomeActivity : BaseActivity() {
                 }
             }
             btnLogin.setOnClickListener {
-                login(mBinding.edtUserName.text.toString().trim().email(), mBinding.edtPassword.text.toString().trim())
+                login(edtUserName.text.toString().trim().email(), edtPassword.text.toString().trim())
             }
             btnRegister.setOnClickListener {
                 startActivity(Intent(this@HomeActivity, RegisterActivity::class.java))
@@ -90,7 +88,7 @@ class HomeActivity : BaseActivity() {
                     .setNegativeButton(android.R.string.cancel, null)
                     .setPositiveButton(android.R.string.ok) { _, _ ->
                         Firebase.auth.signOut()
-                        sharedPreferencesHelper.getSharedPreferences().edit().clear().apply()
+                        mViewModel.sharedPreferencesHelper.getSharedPreferences().edit().clear().apply()
                         recreate()
                     }.show()
             }
@@ -107,10 +105,12 @@ class HomeActivity : BaseActivity() {
             }
         }
 
-        if (!sharedPreferencesHelper[Constant.PREF_EMAIL].isNullOrBlank() && !sharedPreferencesHelper[Constant.PREF_PASSWORD].isNullOrBlank()) {
-            login(sharedPreferencesHelper[Constant.PREF_EMAIL]!!, sharedPreferencesHelper[Constant.PREF_PASSWORD]!!)
-        } else {
-            login(Constant.ANONYMOUS.email(), Constant.ANONYMOUS_PASS)
+        mViewModel.sharedPreferencesHelper.let {
+            if (!it[Constant.PREF_EMAIL].isNullOrBlank() && !it[Constant.PREF_PASSWORD].isNullOrBlank()) {
+                login(it[Constant.PREF_EMAIL]!!, it[Constant.PREF_PASSWORD]!!)
+            } else {
+                login(Constant.ANONYMOUS.email(), Constant.ANONYMOUS_PASS)
+            }
         }
 
         mViewModel.classData = { grade ->
@@ -176,25 +176,27 @@ class HomeActivity : BaseActivity() {
 
             override fun onDataChange(snapshot: DataSnapshot) {
                 showLoading(false)
-                snapshot.getValue(User::class.java)?.let {
-                    if (it.isAdmin) {
-                        mBinding.viewAddBook.visibility = View.VISIBLE
-                        mBinding.viewUpdateSubject.visibility = View.VISIBLE
+                with(mBinding) {
+                    snapshot.getValue(User::class.java)?.let {
+                        if (it.isAdmin) {
+                            viewAddBook.visibility = View.VISIBLE
+                            viewUpdateSubject.visibility = View.VISIBLE
+                        }
+                        layoutProfile.visibility = View.VISIBLE
+                        tvName.text = it.name
+                        tvClass.text = getString(R.string.class_format, it.grade)
+                        tvSdt.text = it.phone
+                        it.image?.let { url ->
+                            Picasso.get().load(url).into(imvAvatar)
+                        }
+                        viewLogin.visibility = View.GONE
+                        viewLogout.visibility = View.VISIBLE
+                        mViewModel.sharedPreferencesHelper.set(Constant.PREF_EMAIL, email).set(Constant.PREF_PASSWORD, password)
                     }
-                    mBinding.layoutProfile.visibility = View.VISIBLE
-                    mBinding.tvName.text = it.name
-                    mBinding.tvClass.text = getString(R.string.class_format, it.grade)
-                    mBinding.tvSdt.text = it.phone
-                    it.image?.let { url ->
-                        Picasso.get().load(url).into(mBinding.imvAvatar)
-                    }
-                    mBinding.viewLogin.visibility = View.GONE
-                    mBinding.viewLogout.visibility = View.VISIBLE
-                    sharedPreferencesHelper.set(Constant.PREF_EMAIL, email).set(Constant.PREF_PASSWORD, password)
+                    imvCloseLogin.performClick()
+                    edtUserName.setText("")
+                    edtPassword.setText("")
                 }
-                mBinding.edtUserName.setText("")
-                mBinding.edtPassword.setText("")
-                mBinding.imvCloseLogin.performClick()
             }
         })
     }
