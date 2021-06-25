@@ -16,7 +16,6 @@
             android:fontFamily="monospace"
             android:gravity="center"
             android:background="#3303DAC5"
-            android:text="@string/class_format"
             android:paddingVertical="@dimen/margin_12"
             android:textColor="@color/black"
             android:textSize="@dimen/text_large"

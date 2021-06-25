@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">VNbooks</string>
     <string name="please_wait">Please wait…</string>
-    <string name="class_format">Lớp %1$d</string>
+    <string name="class_format">Lớp %1$s</string>
     <string name="my_book">Sách của bé</string>
     <string name="my_class">Lớp của bé</string>
     <string name="my_subject">Môn của bé</string>
@@ -21,4 +21,13 @@
     <string name="no_data">Không có dữ liệu</string>
     <string name="data_error">Lỗi dữ liệu</string>
     <string name="about_message">Founder:\nBùi Vân Ngọc Bích\n\nDevelopers:\nNguyễn Đức Thịnh\n\nContact:\nfb.com/ducthinhtrai\n\nCreated at 23/06/2021</string>
+    <string name="my_name">Tên của bé</string>
+    <string name="my_grade">Lớp của bé</string>
+    <string name="phone">Số điện thoại</string>
+    <string name="please_enter_information">Vui lòng điền thông tin</string>
+    <string name="password_invalid">Mật khẩu phải trên 6 kí tự</string>
+    <string name="select_image">Chọn ảnh</string>
+    <string name="from_gallery">Chọn từ thư viện</string>
+    <string name="take_a_picture">Chụp ảnh</string>
+    <string name="select_other_username_message">Tên đăng nhập đã tồn tại, vui lòng chọn tên khác!</string>
 </resources>

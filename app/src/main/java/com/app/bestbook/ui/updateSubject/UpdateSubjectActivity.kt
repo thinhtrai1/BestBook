@@ -102,14 +102,22 @@ class UpdateSubjectActivity : BaseActivity() {
     }
 
     private fun addBook(imageUrl: String, classSelected: Int, subjectSelected: String, progressDialog: Dialog) {
-        val subjectRef = mDatabaseReference
+        mDatabaseReference
             .child(classSelected.toString())
             .child(subjectSelected)
-        subjectRef.child("image").setValue(imageUrl)
-        progressDialog.dismiss()
-        mImageUri = null
-        mBinding.imvImage.setImageResource(0)
-        mBinding.spnClass.setSelection(0)
+            .child("image")
+            .setValue(imageUrl)
+            .addOnSuccessListener {
+                progressDialog.dismiss()
+                mImageUri = null
+                mBinding.imvImage.setImageResource(0)
+                mBinding.spnClass.setSelection(0)
+            }
+            .addOnFailureListener {
+                progressDialog.dismiss()
+                showToast(it.message)
+            }
+
     }
 
     private fun pickImage() {

@@ -191,7 +191,7 @@ class HomeActivity : BaseActivity() {
                         }
                         viewLogin.visibility = View.GONE
                         viewLogout.visibility = View.VISIBLE
-                        mViewModel.sharedPreferencesHelper.set(Constant.PREF_EMAIL, email).set(Constant.PREF_PASSWORD, password)
+                        mViewModel.sharedPreferencesHelper.set(Constant.PREF_EMAIL, email)[Constant.PREF_PASSWORD] = password
                     }
                     imvCloseLogin.performClick()
                     edtUserName.setText("")

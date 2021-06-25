@@ -19,10 +19,15 @@ import com.app.bestbook.databinding.ActivityAddBookBinding
 import com.app.bestbook.databinding.ProgressDialogCustomBinding
 import com.app.bestbook.model.Book
 import com.app.bestbook.model.Subject
+import com.app.bestbook.ui.home.HomeActivity
 import com.app.bestbook.util.Constant
 import com.app.bestbook.util.Utility
 import com.app.bestbook.util.isPermissionGranted
 import com.app.bestbook.util.showToast
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
@@ -42,6 +47,28 @@ class AddBookActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_add_book)
+        supportActionBar?.title = getString(R.string.add_book)
+
+        if (Firebase.auth.currentUser?.email != "admin@vnbooks.com") {
+            startActivity(Intent(this, HomeActivity::class.java))
+            finish()
+            return
+        }
+        if (intent.action == Intent.ACTION_SEND) {
+            Firebase.database(Constant.FIREBASE_DATABASE).reference.child("token").addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onCancelled(error: DatabaseError) {
+                    showToast(getString(R.string.an_error_occurred_please_try_again))
+                    finish()
+                }
+
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.value != "test") {
+                        showToast("The app has been blocked by the developer!")
+                        finish()
+                    }
+                }
+            })
+        }
 
         with(mBinding) {
             spnStartPage.adapter = ArrayAdapter(this@AddBookActivity, android.R.layout.simple_list_item_1, listOf("0", "1", "2", "3", "4", "5"))
