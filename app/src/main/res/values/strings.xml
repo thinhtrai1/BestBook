@@ -7,4 +7,13 @@
     <string name="my_subject">Môn của bé</string>
     <string name="loading_data">Đang tải dữ liệu…</string>
     <string name="saving_book">Đang lưu sách…</string>
+    <string name="login">Đăng nhập</string>
+    <string name="logout">Đăng xuất</string>
+    <string name="register">Đăng ký</string>
+    <string name="notification">Thông báo</string>
+    <string name="username">Tên đăng nhập</string>
+    <string name="password">Mật khẩu</string>
+    <string name="login_unsuccessfully">Đăng nhập không thành công!</string>
+    <string name="add_book">Add book</string>
+    <string name="update_subject">Update subject</string>
 </resources>

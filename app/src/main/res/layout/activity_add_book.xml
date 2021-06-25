@@ -111,7 +111,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="@dimen/margin_20"
-            android:text="Add book"
+            android:text="@string/add_book"
             android:textAllCaps="false"
             android:textColor="@color/black"
             android:textSize="@dimen/text_large" />

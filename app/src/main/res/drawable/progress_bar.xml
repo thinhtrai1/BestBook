@@ -5,7 +5,7 @@
         android:shape="ring"
         android:useLevel="false">
         <gradient
-            android:endColor="?colorSecondary"
+            android:endColor="@color/green"
             android:startColor="@android:color/white"
             android:type="sweep" />
     </shape>

@@ -9,30 +9,343 @@
             type="com.app.bestbook.ui.home.HomeViewModel" />
     </data>
 
-    <LinearLayout
+    <androidx.drawerlayout.widget.DrawerLayout
+        android:id="@+id/layoutContainer"
         android:layout_width="match_parent"
-        android:padding="@dimen/margin_12"
         android:layout_height="match_parent">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            app:adapter="@{viewModel.adapter1}"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fitsSystemWindows="true"
+            android:orientation="vertical">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            app:adapter="@{viewModel.adapter2}"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+            <Toolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?actionBarSize"
+                android:background="@color/black"
+                android:title="@string/my_class">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            app:adapter="@{viewModel.adapter3}"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
-    </LinearLayout>
+                <ImageView
+                    android:id="@+id/imvMenu"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="end"
+                    android:layout_margin="@dimen/margin_16"
+                    android:adjustViewBounds="true"
+                    android:src="@drawable/ic_menu" />
+            </Toolbar>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="@dimen/margin_12">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:adapter="@{viewModel.adapter1}"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:adapter="@{viewModel.adapter2}"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:adapter="@{viewModel.adapter3}"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/layoutMenu"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="end"
+            android:background="@color/blue"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ScrollView
+                android:id="@+id/scrollViewInfo"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:animateLayoutChanges="true"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="@dimen/margin_12"
+                        android:layout_marginTop="@dimen/margin_12"
+                        android:layout_marginBottom="@dimen/margin_16"
+                        android:gravity="center">
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/imvAvatar"
+                            android:layout_width="@dimen/avatar_size"
+                            android:layout_height="@dimen/avatar_size"
+                            android:scaleType="centerCrop"
+                            app:shapeAppearance="@style/CircleImageView"
+                            app:srcCompat="@drawable/splash_launcher" />
+
+                        <LinearLayout
+                            android:id="@+id/layoutProfile"
+                            android:visibility="gone"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_marginStart="@dimen/margin_12"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:singleLine="true"
+                                android:textColor="@color/white"
+                                android:textSize="@dimen/text_large"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvClass"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:singleLine="true"
+                                android:textColor="@color/white"
+                                android:textSize="@dimen/text_normal" />
+
+                            <TextView
+                                android:id="@+id/tvSdt"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:singleLine="true"
+                                android:textColor="@color/white"
+                                android:textSize="@dimen/text_normal" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <FrameLayout
+                        android:id="@+id/viewLogin"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:foreground="@drawable/ripple">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="2dp"
+                            android:background="@color/white" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="@dimen/margin_12"
+                            android:text="@string/login"
+                            android:textColor="@color/white"
+                            android:textSize="@dimen/text_large"
+                            android:textStyle="bold|italic" />
+                    </FrameLayout>
+
+                    <FrameLayout
+                        android:id="@+id/viewAddBook"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:foreground="@drawable/ripple"
+                        android:visibility="gone">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="2dp"
+                            android:background="@color/white" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="@dimen/margin_12"
+                            android:text="@string/add_book"
+                            android:textColor="@color/white"
+                            android:textSize="@dimen/text_large"
+                            android:textStyle="bold|italic" />
+                    </FrameLayout>
+
+                    <FrameLayout
+                        android:id="@+id/viewUpdateSubject"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:foreground="@drawable/ripple"
+                        android:visibility="gone">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="2dp"
+                            android:background="@color/white" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="@dimen/margin_12"
+                            android:text="@string/update_subject"
+                            android:textColor="@color/white"
+                            android:textSize="@dimen/text_large"
+                            android:textStyle="bold|italic" />
+                    </FrameLayout>
+
+                    <FrameLayout
+                        android:id="@+id/viewNotification"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:foreground="@drawable/ripple">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="2dp"
+                            android:background="@color/white" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="@dimen/margin_12"
+                            android:text="@string/notification"
+                            android:textColor="@color/white"
+                            android:textSize="@dimen/text_large"
+                            android:textStyle="bold|italic" />
+                    </FrameLayout>
+
+                    <FrameLayout
+                        android:id="@+id/viewAbout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:foreground="@drawable/ripple">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="2dp"
+                            android:background="@color/white" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="@dimen/margin_12"
+                            android:text="@string/app_name"
+                            android:textColor="@color/white"
+                            android:textSize="@dimen/text_large"
+                            android:textStyle="bold|italic" />
+                    </FrameLayout>
+
+                    <FrameLayout
+                        android:id="@+id/viewLogout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:foreground="@drawable/ripple"
+                        android:visibility="gone">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="2dp"
+                            android:background="@color/white" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="@dimen/margin_12"
+                            android:text="@string/logout"
+                            android:textColor="@color/white"
+                            android:textSize="@dimen/text_large"
+                            android:textStyle="bold|italic" />
+                    </FrameLayout>
+                </LinearLayout>
+            </ScrollView>
+
+            <LinearLayout
+                android:id="@+id/layoutLogin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_layout_login"
+                android:orientation="vertical"
+                android:padding="@dimen/margin_12"
+                app:layout_constraintTop_toBottomOf="parent">
+
+                <ImageView
+                    android:id="@+id/imvCloseLogin"
+                    android:layout_width="@dimen/icon_close_size"
+                    android:layout_height="@dimen/icon_close_size"
+                    android:layout_gravity="end"
+                    android:background="@drawable/bg_blue_oval"
+                    android:padding="@dimen/margin_8"
+                    android:src="@drawable/ic_close_black" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <EditText
+                        android:id="@+id/edtUserName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/username"
+                        android:inputType="text"
+                        android:textColor="@color/blue"
+                        android:textSize="@dimen/text_large"
+                        android:textStyle="bold" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/margin_8">
+
+                    <EditText
+                        android:id="@+id/edtPassword"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/password"
+                        android:inputType="textPassword"
+                        android:textColor="@color/blue"
+                        android:textSize="@dimen/text_large"
+                        android:textStyle="bold" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/margin_16"
+                    android:gravity="center_horizontal">
+
+                    <Button
+                        android:id="@+id/btnLogin"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:backgroundTint="@color/blue"
+                        android:text="@string/login"
+                        android:textAllCaps="false"
+                        android:textColor="@color/white"
+                        android:textSize="@dimen/text_large"
+                        android:textStyle="bold" />
+
+                    <Button
+                        android:id="@+id/btnRegister"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:backgroundTint="@color/blue"
+                        android:text="@string/register"
+                        android:textAllCaps="false"
+                        android:textColor="@color/white"
+                        android:textSize="@dimen/text_large"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.drawerlayout.widget.DrawerLayout>
 </layout>

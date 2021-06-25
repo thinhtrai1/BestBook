@@ -53,4 +53,7 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:28.1.0')
     implementation 'com.google.firebase:firebase-database-ktx'
     implementation 'com.google.firebase:firebase-storage-ktx'
+    implementation 'com.google.firebase:firebase-auth-ktx'
+
+    implementation 'com.squareup.picasso:picasso:2.71828'
 }

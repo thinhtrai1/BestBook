@@ -13,4 +13,6 @@
     <dimen name="margin_20">25dp</dimen>
 
     <dimen name="progress_bar_size">50dp</dimen>
+
+    <dimen name="avatar_size">80dp</dimen>
 </resources>
