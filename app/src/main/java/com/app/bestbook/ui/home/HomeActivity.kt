@@ -1,5 +1,6 @@
 package com.app.bestbook.ui.home
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -12,10 +13,15 @@ import androidx.databinding.DataBindingUtil
 import com.app.bestbook.R
 import com.app.bestbook.base.BaseActivity
 import com.app.bestbook.databinding.ActivityHomeBinding
+import com.app.bestbook.model.Subject
 import com.app.bestbook.model.User
 import com.app.bestbook.ui.addBook.AddBookActivity
 import com.app.bestbook.ui.register.RegisterActivity
 import com.app.bestbook.ui.subject.SubjectActivity
+import com.app.bestbook.ui.updateSubject.UpdateSubjectActivity
+import com.app.bestbook.util.Constant
+import com.app.bestbook.util.SharedPreferencesHelper
+import com.app.bestbook.util.email
 import com.app.bestbook.util.showToast
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.ktx.auth
@@ -25,11 +31,14 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.squareup.picasso.Picasso
+import java.io.Serializable
 
 class HomeActivity : BaseActivity() {
     private lateinit var mBinding: ActivityHomeBinding
     private val mViewModel: HomeViewModel by viewModels()
     private val mConstraintSet = ConstraintSet()
+    private val sharedPreferencesHelper = SharedPreferencesHelper()
+    private val mFirebaseDatabase = Firebase.database(Constant.FIREBASE_DATABASE).reference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,7 +69,7 @@ class HomeActivity : BaseActivity() {
                 }
             }
             btnLogin.setOnClickListener {
-                login()
+                login(mBinding.edtUserName.text.toString().trim().email(), mBinding.edtPassword.text.toString().trim())
             }
             btnRegister.setOnClickListener {
                 startActivity(Intent(this@HomeActivity, RegisterActivity::class.java))
@@ -68,41 +77,81 @@ class HomeActivity : BaseActivity() {
             viewAddBook.setOnClickListener {
                 startActivity(Intent(this@HomeActivity, AddBookActivity::class.java))
             }
+            viewUpdateSubject.setOnClickListener {
+                startActivity(Intent(this@HomeActivity, UpdateSubjectActivity::class.java))
+            }
+            viewLogout.setOnClickListener {
+                AlertDialog.Builder(this@HomeActivity)
+                    .setMessage(R.string.logout_confirm_message)
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .setPositiveButton(android.R.string.ok) { _, _ ->
+                        Firebase.auth.signOut()
+                        sharedPreferencesHelper.getSharedPreferences().edit().clear().apply()
+                        recreate()
+                    }.show()
+            }
         }
 
-        mViewModel.classData = {
-            startActivity(
-                Intent(this, SubjectActivity::class.java)
-                    .putExtra("data", it)
-            )
+        if (!sharedPreferencesHelper[Constant.PREF_EMAIL].isNullOrBlank() && !sharedPreferencesHelper[Constant.PREF_PASSWORD].isNullOrBlank()) {
+            login(sharedPreferencesHelper[Constant.PREF_EMAIL]!!, sharedPreferencesHelper[Constant.PREF_PASSWORD]!!)
+        } else {
+            login(Constant.ANONYMOUS.email(), Constant.ANONYMOUS_PASS)
+        }
+
+        mViewModel.classData = { grade ->
+            showLoading(true)
+            mFirebaseDatabase.child("data").child(grade.toString()).addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onCancelled(error: DatabaseError) {
+                    showToast(getString(R.string.an_error_occurred_please_try_again))
+                    showLoading(false)
+                }
+
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.hasChildren()) {
+                        val data = ArrayList<Subject>()
+                        snapshot.children.onEach {
+                            it.key?.let { key ->
+                                it.getValue(Subject::class.java)?.apply { id = key }?.let { s -> data.add(s) }
+                            }
+                        }
+                        startActivity(
+                            Intent(this@HomeActivity, SubjectActivity::class.java).putExtra("data", data as Serializable)
+                        )
+                    } else {
+                        showToast(getString(R.string.no_data))
+                    }
+                    showLoading(false)
+                }
+            })
         }
     }
 
-    private fun login() {
+    private fun login(email: String, password: String) {
         showLoading(true)
         val firebaseAuth = Firebase.auth
-        firebaseAuth.signInWithEmailAndPassword(
-            mBinding.edtUserName.text.toString().trim().plus("@vnbooks.com"),
-            mBinding.edtPassword.text.toString().trim()
-        ).addOnCompleteListener(this) { task ->
-            if (task.isSuccessful) {
-                firebaseAuth.currentUser?.let { user ->
-                    getInformation(user)
-                    return@addOnCompleteListener
+        firebaseAuth
+            .signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    firebaseAuth.currentUser?.let { user ->
+                        if (email != Constant.ANONYMOUS.email()) {
+                            getInformation(user, email, password)
+                            return@addOnCompleteListener
+                        }
+                    }
+                } else {
+                    showToast(getString(R.string.login_unsuccessfully))
                 }
-            } else {
+                showLoading(false)
+            }
+            .addOnFailureListener {
+                showLoading(false)
                 showToast(getString(R.string.login_unsuccessfully))
             }
-            showLoading(false)
-        }.addOnFailureListener {
-            showLoading(false)
-            showToast(getString(R.string.login_unsuccessfully))
-        }
     }
 
-    private fun getInformation(googleUser: FirebaseUser) {
-        val firebaseDatabase = Firebase.database("https://bestbook-93f2f-default-rtdb.asia-southeast1.firebasedatabase.app/").reference
-        firebaseDatabase.child("user").child(googleUser.uid).addListenerForSingleValueEvent(object : ValueEventListener {
+    private fun getInformation(googleUser: FirebaseUser, email: String, password: String) {
+        mFirebaseDatabase.child("user").child(googleUser.uid).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onCancelled(error: DatabaseError) {
                 showLoading(false)
                 showToast(getString(R.string.login_unsuccessfully))
@@ -111,6 +160,10 @@ class HomeActivity : BaseActivity() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 showLoading(false)
                 snapshot.getValue(User::class.java)?.let {
+                    if (it.isAdmin) {
+                        mBinding.viewAddBook.visibility = View.VISIBLE
+                        mBinding.viewUpdateSubject.visibility = View.VISIBLE
+                    }
                     mBinding.layoutProfile.visibility = View.VISIBLE
                     mBinding.tvName.text = it.name
                     mBinding.tvClass.text = getString(R.string.class_format, it.grade)
@@ -120,10 +173,7 @@ class HomeActivity : BaseActivity() {
                     }
                     mBinding.viewLogin.visibility = View.GONE
                     mBinding.viewLogout.visibility = View.VISIBLE
-                    if (it.isAdmin) {
-                        mBinding.viewAddBook.visibility = View.VISIBLE
-                        mBinding.viewUpdateSubject.visibility = View.VISIBLE
-                    }
+                    sharedPreferencesHelper.set(Constant.PREF_EMAIL, email).set(Constant.PREF_PASSWORD, password)
                 }
                 mBinding.edtUserName.setText("")
                 mBinding.edtPassword.setText("")

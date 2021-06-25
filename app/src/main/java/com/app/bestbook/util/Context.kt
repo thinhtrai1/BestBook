@@ -20,3 +20,7 @@ fun getString(stringRes: Int, vararg formatArgs: Any?) = Application.instance.ge
 fun Context.isPermissionGranted(vararg permissions: String): Boolean {
     return permissions.indexOfFirst { ContextCompat.checkSelfPermission(this, it) != 0 } == -1
 }
+
+fun getDimension(dimenRes: Int) = Application.instance.resources.getDimensionPixelSize(dimenRes)
+
+fun String.email() = plus("@vnbooks.com")

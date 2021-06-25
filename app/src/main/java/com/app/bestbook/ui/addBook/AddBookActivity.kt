@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.Dialog
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.view.LayoutInflater
@@ -20,6 +19,8 @@ import com.app.bestbook.databinding.ActivityAddBookBinding
 import com.app.bestbook.databinding.ProgressDialogCustomBinding
 import com.app.bestbook.model.Book
 import com.app.bestbook.model.Subject
+import com.app.bestbook.util.Constant
+import com.app.bestbook.util.Utility
 import com.app.bestbook.util.isPermissionGranted
 import com.app.bestbook.util.showToast
 import com.google.firebase.database.ktx.database
@@ -33,7 +34,7 @@ class AddBookActivity : BaseActivity() {
     private val mSubjectData = ArrayList<List<Subject>>()
     private var mFileUri: Uri? = null
     private var mImageUri: Uri? = null
-    private val mDatabaseReference = Firebase.database("https://bestbook-93f2f-default-rtdb.asia-southeast1.firebasedatabase.app/").reference.child("data")
+    private val mDatabaseReference = Firebase.database(Constant.FIREBASE_DATABASE).reference.child("data")
     private val mStorageReference = Firebase.storage.reference
     private var mBookUrl: String? = null
     private var mImageUrl: String? = null
@@ -70,8 +71,8 @@ class AddBookActivity : BaseActivity() {
             btnSelectImage.setOnClickListener {
                 if (isPermissionGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
                     pickImage()
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 101)
+                } else {
+                    ActivityCompat.requestPermissions(this@AddBookActivity, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 101)
                 }
             }
 
@@ -80,7 +81,7 @@ class AddBookActivity : BaseActivity() {
                 if (mFileUri == null || mImageUri == null || classSelected == 0 || edtBookName.text.isBlank()) {
                     showToast("missing information")
                 } else {
-                    val subjectSelected = mSubjectData[classSelected - 1][spnSubject.selectedItemPosition].id
+                    val subjectSelected = mSubjectData[classSelected - 1][spnSubject.selectedItemPosition].id!!
                     val binding: ProgressDialogCustomBinding
                     val progressDialog = Dialog(this@AddBookActivity).apply {
                         binding = ProgressDialogCustomBinding.inflate(LayoutInflater.from(this@AddBookActivity))
@@ -116,20 +117,25 @@ class AddBookActivity : BaseActivity() {
                         .child(classSelected.toString())
                         .child(subjectSelected)
                         .child(Calendar.getInstance().timeInMillis.toString()).apply {
-                            putFile(mImageUri!!).addOnSuccessListener {
-                                downloadUrl.addOnSuccessListener {
-                                    mImageUrl = it.toString()
-                                    if (mBookUrl != null) {
-                                        addBook(classSelected, subjectSelected, progressDialog)
+                            putFile(mImageUri!!)
+                                .addOnFailureListener {
+                                    progressDialog.dismiss()
+                                    showToast(it.message)
+                                }
+                                .addOnSuccessListener {
+                                    downloadUrl.addOnSuccessListener {
+                                        mImageUrl = it.toString()
+                                        if (mBookUrl != null) {
+                                            addBook(classSelected, subjectSelected, progressDialog)
+                                        }
                                     }
                                 }
-                            }
                         }
                 }
             }
         }
 
-        generateData()
+        Utility.generateData(mSubjectData)
 
         intent.getParcelableExtra<Uri?>(Intent.EXTRA_STREAM)?.let {
             mFileUri = it
@@ -143,13 +149,13 @@ class AddBookActivity : BaseActivity() {
             .child(subjectSelected)
         subjectRef.child("name").setValue(mSubjectData[classSelected - 1][mBinding.spnSubject.selectedItemPosition].name)
         subjectRef.child("books").push().setValue(
-            Book(
-                mBinding.edtBookName.text.toString().trim(),
-                mBookUrl!!,
-                mImageUrl!!,
-                mBinding.spnStartPage.selectedItemPosition,
-                Calendar.getInstance().timeInMillis
-            )
+            Book().apply {
+                name = mBinding.edtBookName.text.toString().trim()
+                url = mBookUrl!!
+                image = mImageUrl!!
+                startPage = mBinding.spnStartPage.selectedItemPosition
+                time = Calendar.getInstance().timeInMillis
+            }
         )
         progressDialog.dismiss()
         mFileUri = null
@@ -208,82 +214,6 @@ class AddBookActivity : BaseActivity() {
                 100 -> openFile()
                 101 -> pickImage()
             }
-        }
-    }
-
-    private fun generateData() {
-        for (i in 1..3) {
-            mSubjectData.add(
-                listOf(
-                    Subject("toan", "Toán"),
-                    Subject("tiengviet", "Tiếng Việt"),
-                    Subject("tienganh", "Tiếng Anh"),
-                    Subject("tunhienvaxahoi", "Tự nhiên và Xã hội"),
-                    Subject("amnhac", "Âm nhạc"),
-                    Subject("mythuat", "Mỹ thuật"),
-                    Subject("daoduc", "Đạo đức"),
-                    Subject("theduc", "Thể dục"),
-                    Subject("tinhoc", "Tin học"),
-                    Subject("congnghe", "Công nghệ")
-                )
-            )
-        }
-        for (i in 4..5) {
-            mSubjectData.add(
-                listOf(
-                    Subject("toan", "Toán"),
-                    Subject("tiengviet", "Tiếng Việt"),
-                    Subject("tienganh", "Tiếng Anh"),
-                    Subject("tunhienvaxahoi", "Tự nhiên và Xã hội"),
-                    Subject("khoahoc", "Khoa học"),
-                    Subject("lichsu", "Lịch sử"),
-                    Subject("dialy", "Địa lý"),
-                    Subject("amnhac", "Âm nhạc"),
-                    Subject("mythuat", "Mỹ thuật"),
-                    Subject("daoduc", "Đạo đức"),
-                    Subject("theduc", "Thể dục"),
-                    Subject("tinhoc", "Tin học"),
-                    Subject("congnghe", "Công nghệ")
-                )
-            )
-        }
-        for (i in 6..9) {
-            mSubjectData.add(
-                listOf(
-                    Subject("toan", "Toán"),
-                    Subject("nguvan", "Ngữ văn"),
-                    Subject("tienganh", "Tiếng Anh"),
-                    Subject("lichsu", "Lịch sử"),
-                    Subject("dialy", "Địa lý"),
-                    Subject("sinhhoc", "Sinh học"),
-                    Subject("khoahoctunhien", "Khoa học tự nhiên"),
-                    Subject("congnghe", "Công nghệ"),
-                    Subject("giaoduccongdan", "Giáo dục công dân"),
-                    Subject("amnhac", "Âm nhạc"),
-                    Subject("mythuat", "Mỹ thuật"),
-                    Subject("theduc", "Thể dục"),
-                    Subject("tinhoc", "Tin học")
-                )
-            )
-        }
-        for (i in 10..12) {
-            mSubjectData.add(
-                listOf(
-                    Subject("toan", "Toán"),
-                    Subject("nguvan", "Ngữ văn"),
-                    Subject("tienganh", "Tiếng Anh"),
-                    Subject("lichsu", "Lịch sử"),
-                    Subject("dialy", "Địa lý"),
-                    Subject("sinhhoc", "Sinh học"),
-                    Subject("hoahoc", "Hóa học"),
-                    Subject("congnghe", "Công nghệ"),
-                    Subject("giaoduckinhtevaquocphong", "Giáo dục kinh tế và pháp luật"),
-                    Subject("giaoducquocphongvaaninh", "Giáo dục Quốc phòng và An ninh\n"),
-                    Subject("nghethuat", "Nghệ thuật"),
-                    Subject("theduc", "Thể dục"),
-                    Subject("tinhoc", "Tin học")
-                )
-            )
         }
     }
 }

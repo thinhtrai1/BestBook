@@ -6,7 +6,7 @@
     <string name="my_class">Lớp của bé</string>
     <string name="my_subject">Môn của bé</string>
     <string name="loading_data">Đang tải dữ liệu…</string>
-    <string name="saving_book">Đang lưu sách…</string>
+    <string name="saving_book">Saving…</string>
     <string name="login">Đăng nhập</string>
     <string name="logout">Đăng xuất</string>
     <string name="register">Đăng ký</string>
@@ -16,4 +16,8 @@
     <string name="login_unsuccessfully">Đăng nhập không thành công!</string>
     <string name="add_book">Add book</string>
     <string name="update_subject">Update subject</string>
+    <string name="logout_confirm_message">Bạn có chắc chắn muốn đăng xuất</string>
+    <string name="an_error_occurred_please_try_again">Đã có lỗi. Vui lòng thử lại</string>
+    <string name="no_data">Không có dữ liệu</string>
+    <string name="data_error">Lỗi dữ liệu</string>
 </resources>

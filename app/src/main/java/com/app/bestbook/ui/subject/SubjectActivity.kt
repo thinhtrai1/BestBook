@@ -8,6 +8,8 @@ import com.app.bestbook.R
 import com.app.bestbook.base.BaseActivity
 import com.app.bestbook.databinding.ActivitySubjectBinding
 import com.app.bestbook.ui.book.BookActivity
+import com.app.bestbook.util.showToast
+import java.io.Serializable
 
 class SubjectActivity : BaseActivity() {
     private lateinit var mBinding: ActivitySubjectBinding
@@ -18,7 +20,16 @@ class SubjectActivity : BaseActivity() {
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_subject)
         mBinding.viewModel = mViewModel
         mViewModel.adapter.onClickListener = {
-            startActivity(Intent(this, BookActivity::class.java))
+            val books = it.books.map { b -> b.value }
+            if (books.isNotEmpty()) {
+                startActivity(
+                    Intent(this, BookActivity::class.java)
+                        .putExtra("data", books as Serializable)
+                        .putExtra("subject", it.name)
+                )
+            } else {
+                showToast(getString(R.string.no_data))
+            }
         }
     }
 }

@@ -35,10 +35,13 @@
             android:screenOrientation="portrait" />
         <activity
             android:name=".ui.register.RegisterActivity"
-            android:label="@string/register"/>
+            android:label="@string/register" />
         <activity
             android:name=".ui.addBook.AddBookActivity"
-            android:screenOrientation="portrait">
+            android:label="@string/add_book" />
+        <activity
+            android:name=".ui.updateSubject.UpdateSubjectActivity"
+            android:label="@string/update_subject">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

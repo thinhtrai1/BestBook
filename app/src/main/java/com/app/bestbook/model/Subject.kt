@@ -2,4 +2,9 @@ package com.app.bestbook.model
 
 import java.io.Serializable
 
-class Subject(var id: String, var name: String, val books: ArrayList<Book> = ArrayList()): Serializable
+class Subject : Serializable {
+    var id: String? = null
+    var name: String? = null
+    var image: String? = null
+    val books = HashMap<String, Book>()
+}

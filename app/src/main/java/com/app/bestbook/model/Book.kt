@@ -1,3 +1,11 @@
 package com.app.bestbook.model
 
-class Book (val name: String, val url: String, val image: String, val startPage: Int, val time: Long)
+import java.io.Serializable
+
+class Book : Serializable {
+    var name: String? = null
+    var url: String? = null
+    var image: String? = null
+    var startPage = 0
+    var time = 0L
+}

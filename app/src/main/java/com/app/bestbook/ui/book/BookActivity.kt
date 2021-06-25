@@ -18,7 +18,9 @@ class BookActivity : BaseActivity() {
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_book)
         mBinding.viewModel = mViewModel
         mViewModel.adapter.onClickListener = {
-            startActivity(Intent(this, ReadActivity::class.java))
+            startActivity(
+                Intent(this, ReadActivity::class.java).putExtra("data", it).putExtra("subject", mViewModel.subject)
+            )
         }
     }
 }

@@ -16,11 +16,15 @@ import java.io.File
 class ReadActivity : BaseActivity() {
     private lateinit var mBinding: ActivityReadBinding
     private val mViewModel: ReadViewModel by viewModels()
-    private val test = "https://firebasestorage.googleapis.com/v0/b/bestbook-93f2f.appspot.com/o/book%2F1%2Ftiengviet%2FSach%20Giao%20Khoa%20Tieng%20Viet%20lop%201%20Tap%201.pdf?alt=media"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_read)
+        if (mViewModel.book?.url == null) {
+            showToast(getString(R.string.data_error))
+            return
+        }
+        supportActionBar?.title = mViewModel.subject + " - " + mViewModel.book!!.name
 
         if (mViewModel.pdfFile == null) {
             val binding: ProgressDialogCustomBinding
@@ -45,7 +49,7 @@ class ReadActivity : BaseActivity() {
                     progressDialog.dismiss()
                     showToast(error.message)
                 }
-            }).renderUrl(test)
+            }).renderUrl(mViewModel.book!!.url!!)
         } else {
             mBinding.pdfView.renderFile(File(mViewModel.pdfFile!!))
         }
