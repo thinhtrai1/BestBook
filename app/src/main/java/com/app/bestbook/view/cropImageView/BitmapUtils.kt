@@ -249,7 +249,7 @@ internal object BitmapUtils {
         scale: Float,
         flipHorizontally: Boolean,
         flipVertically: Boolean
-    ): Bitmap? {
+    ): Bitmap {
 
         // get the rectangle in original image that contains the required cropped area (larger for non
         // rectangular crop)
@@ -273,7 +273,7 @@ internal object BitmapUtils {
             if (flipHorizontally) -scale else scale,
             if (flipVertically) -scale else scale
         )
-        var result: Bitmap? = Bitmap.createBitmap(
+        var result: Bitmap = Bitmap.createBitmap(
             bitmap,
             rect.left,
             rect.top,
@@ -519,13 +519,13 @@ internal object BitmapUtils {
 
     /** Resize the given bitmap to the given width/height by the given option.<br></br>  */
     fun resizeBitmap(
-        bitmap: Bitmap?, reqWidth: Int, reqHeight: Int, options: CropImageView.RequestSizeOptions
-    ): Bitmap? {
+        bitmap: Bitmap, reqWidth: Int, reqHeight: Int, options: CropImageView.RequestSizeOptions
+    ): Bitmap {
         try {
-            if (bitmap != null && (reqWidth > 0 && reqHeight > 0
+            if (reqWidth > 0 && reqHeight > 0
                         && ((options === CropImageView.RequestSizeOptions.RESIZE_FIT
                         || options === CropImageView.RequestSizeOptions.RESIZE_INSIDE
-                        || options === CropImageView.RequestSizeOptions.RESIZE_EXACT)))) {
+                        || options === CropImageView.RequestSizeOptions.RESIZE_EXACT))) {
                 var resized: Bitmap? = null
                 if (options === CropImageView.RequestSizeOptions.RESIZE_EXACT) {
                     resized = Bitmap.createScaledBitmap(bitmap, reqWidth, reqHeight, false)
@@ -828,14 +828,14 @@ internal object BitmapUtils {
      * Note: rotating by 0, 90, 180 or 270 degrees doesn't require extra cropping.
      */
     private fun cropForRotatedImage(
-        bitmap: Bitmap?,
+        bitmap: Bitmap,
         points: FloatArray,
         rect: Rect,
         degreesRotated: Int,
         fixAspectRatio: Boolean,
         aspectRatioX: Int,
         aspectRatioY: Int
-    ): Bitmap? {
+    ): Bitmap {
         var bitmap = bitmap
         if (degreesRotated % 90 != 0) {
 

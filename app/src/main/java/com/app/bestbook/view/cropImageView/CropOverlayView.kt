@@ -6,6 +6,7 @@ import android.content.res.TypedArray
 import android.graphics.*
 import android.os.Build
 import android.util.AttributeSet
+import android.util.Log
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -42,6 +43,11 @@ class CropOverlayView(context: Context, attrs: AttributeSet?) : View(context, at
     private val mInitialCropWindowRect = Rect()
     private var initializedCropWindow: Boolean = false
     private var mOriginalLayerType: Int? = null
+    private lateinit var onCropWindowChanged: (Boolean) -> Unit
+
+    fun setOnCropWindowChanged(callback: (Boolean) -> Unit) {
+        onCropWindowChanged = callback
+    }
 
     /** Get the left/top/right/bottom coordinates of the crop window.  */
     fun getCropWindowRect(): RectF {
@@ -230,6 +236,7 @@ class CropOverlayView(context: Context, attrs: AttributeSet?) : View(context, at
         if (initializedCropWindow) {
             initCropWindow()
             invalidate()
+            callOnCropWindowChanged(false)
         }
     }
 
@@ -238,6 +245,7 @@ class CropOverlayView(context: Context, attrs: AttributeSet?) : View(context, at
         if (initializedCropWindow) {
             initCropWindow()
             invalidate()
+            callOnCropWindowChanged(false)
         }
     }
 
@@ -738,6 +746,7 @@ class CropOverlayView(context: Context, attrs: AttributeSet?) : View(context, at
         if (mMoveHandler != null) {
             mMoveHandler = null
             invalidate()
+            callOnCropWindowChanged(false)
         }
     }
 
@@ -767,6 +776,7 @@ class CropOverlayView(context: Context, attrs: AttributeSet?) : View(context, at
             )
             mCropWindowHandler.setRect(rect)
             invalidate()
+            callOnCropWindowChanged(true)
         }
     }
 
@@ -873,6 +883,14 @@ class CropOverlayView(context: Context, attrs: AttributeSet?) : View(context, at
     /** Is the cropping image has been rotated by NOT 0,90,180 or 270 degrees.  */
     private fun isNonStraightAngleRotated(): Boolean {
         return mBoundsPoints[0] != mBoundsPoints[6] && mBoundsPoints[1] != mBoundsPoints[7]
+    }
+
+    private fun callOnCropWindowChanged(inProgress: Boolean) {
+        try {
+            onCropWindowChanged(inProgress)
+        } catch (e: Exception) {
+            Log.e("AIC", "Exception in crop window changed", e)
+        }
     }
 
     private class ScaleListener(private val mCropWindowHandler: CropWindowHandler, private val mCropOverlayView: CropOverlayView) : ScaleGestureDetector.SimpleOnScaleGestureListener() {
