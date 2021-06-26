@@ -35,4 +35,6 @@
     <string name="first_page">Trang đầu</string>
     <string name="page_number">Số trang</string>
     <string name="last_page">Trang cuối</string>
+    <string name="show">hiện</string>
+    <string name="hide">ẩn</string>
 </resources>

@@ -19,6 +19,7 @@ import com.app.bestbook.databinding.ActivityAddBookBinding
 import com.app.bestbook.databinding.ProgressDialogCustomBinding
 import com.app.bestbook.model.Book
 import com.app.bestbook.model.Subject
+import com.app.bestbook.ui.cropImage.CropImageActivity
 import com.app.bestbook.ui.home.HomeActivity
 import com.app.bestbook.util.Constant
 import com.app.bestbook.util.Utility
@@ -221,10 +222,12 @@ class AddBookActivity : BaseActivity() {
 
     private fun editImage(uri: Uri) {
         mImageUri = uri
-        val editIntent = Intent(Intent.ACTION_EDIT)
-            .setDataAndType(uri, "image/*")
-            .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        mEditForResult.launch(Intent.createChooser(editIntent, "Edit your photo"))
+//        val editIntent = Intent(Intent.ACTION_EDIT)
+//            .setDataAndType(uri, "image/*")
+//            .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+//        mEditForResult.launch(Intent.createChooser(editIntent, "Edit your photo"))
+        val i = Intent(this, CropImageActivity::class.java).setData(mImageUri)
+        mEditForResult.launch(i)
     }
 
     private val mEditForResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->

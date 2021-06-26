@@ -57,6 +57,9 @@
                 <data android:mimeType="application/pdf" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.cropImage.CropImageActivity"
+            android:screenOrientation="portrait" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

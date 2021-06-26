@@ -2,7 +2,6 @@ package com.app.bestbook.ui.home
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.lifecycle.MutableLiveData
 import androidx.recyclerview.widget.RecyclerView
 import com.app.bestbook.R
 import com.app.bestbook.databinding.ItemRcvHomeBinding

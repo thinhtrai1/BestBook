@@ -2,13 +2,11 @@ package com.app.bestbook.ui.register
 
 import android.Manifest
 import android.app.AlertDialog
-import android.app.Dialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Bundle
-import android.view.LayoutInflater
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.app.ActivityCompat
@@ -17,7 +15,6 @@ import androidx.databinding.DataBindingUtil
 import com.app.bestbook.R
 import com.app.bestbook.base.BaseActivity
 import com.app.bestbook.databinding.ActivityRegisterBinding
-import com.app.bestbook.databinding.ProgressDialogCustomBinding
 import com.app.bestbook.model.User
 import com.app.bestbook.ui.home.HomeActivity
 import com.app.bestbook.util.Constant
@@ -41,21 +38,13 @@ class RegisterActivity: BaseActivity() {
 
         mBinding.btnLogin.setOnClickListener {
             if (isValid()) {
+                showLoading(true)
                 val email = mBinding.edtUserName.text.toString().trim().email()
                 val password = mBinding.edtPassword.text.toString().trim()
                 Firebase.auth
                     .createUserWithEmailAndPassword(email, password)
                     .addOnSuccessListener { result ->
                         val userId = result.user?.uid ?: return@addOnSuccessListener
-                        val binding: ProgressDialogCustomBinding
-                        val progressDialog = Dialog(this).apply {
-                            binding = ProgressDialogCustomBinding.inflate(LayoutInflater.from(this@RegisterActivity))
-                            setContentView(binding.root)
-                            setCancelable(false)
-                            window!!.setBackgroundDrawableResource(android.R.color.transparent)
-                            show()
-                            binding.tvMessage.text = getString(R.string.saving_book)
-                        }
                         if (mViewModel.imageUri != null) {
                             val reference = Firebase.storage.reference
                                 .child("user")
@@ -63,20 +52,17 @@ class RegisterActivity: BaseActivity() {
                                 .child(userId)
                             reference
                                 .putFile(mViewModel.imageUri!!)
-                                .addOnProgressListener {
-                                    binding.progressBarDownload.progress = 100f * it.bytesTransferred / it.totalByteCount
-                                }
                                 .addOnFailureListener {
-                                    progressDialog.dismiss()
+                                    showLoading(false)
                                     showToast(it.message)
                                 }
                                 .addOnSuccessListener {
                                     reference.downloadUrl.addOnSuccessListener {
-                                        addUser(progressDialog, email, password, userId, it.toString())
+                                        addUser(email, password, userId, it.toString())
                                     }
                                 }
                         } else {
-                            addUser(progressDialog, email, password, userId, null)
+                            addUser(email, password, userId, null)
                         }
                     }
                     .addOnFailureListener {
@@ -110,7 +96,7 @@ class RegisterActivity: BaseActivity() {
         }
     }
 
-    private fun addUser(progressDialog: Dialog, email: String, password: String, userId: String, imageUrl: String?) {
+    private fun addUser(email: String, password: String, userId: String, imageUrl: String?) {
         Firebase.database(Constant.FIREBASE_DATABASE).reference
             .child("user")
             .child(userId)
@@ -125,14 +111,14 @@ class RegisterActivity: BaseActivity() {
             .addOnSuccessListener {
                 mViewModel.sharedPreferencesHelper.set(Constant.PREF_EMAIL, email)[Constant.PREF_PASSWORD] = password
                 showToast(getString(R.string.register_successfully))
-                progressDialog.dismiss()
+                showLoading(false)
                 startActivity(
                     Intent(this, HomeActivity::class.java)
                         .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                 )
             }
             .addOnFailureListener {
-                progressDialog.dismiss()
+                showLoading(false)
                 showToast(it.message)
             }
     }

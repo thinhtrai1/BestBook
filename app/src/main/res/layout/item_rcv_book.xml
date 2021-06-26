@@ -5,7 +5,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/margin_8"
-        app:cardBackgroundColor="@color/gray"
+        android:foreground="?selectableItemBackground"
         app:cardCornerRadius="@dimen/margin_4"
         app:cardElevation="@dimen/margin_4">
 
@@ -14,7 +14,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:adjustViewBounds="true"
-            android:src="@drawable/ic_menu" />
+            android:src="@drawable/ic_book_holder" />
 
         <TextView
             android:id="@+id/tvName"

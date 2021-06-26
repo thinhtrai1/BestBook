@@ -18,6 +18,6 @@
 
     <dimen name="icon_close_size">26dp</dimen>
 
-    <dimen name="size_256">256dp</dimen>
-    <dimen name="size_192">192dp</dimen>
+    <dimen name="thumbnail_160">160dp</dimen>
+    <dimen name="thumbnail_240">240dp</dimen>
 </resources>

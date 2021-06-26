@@ -24,9 +24,9 @@ class SubjectRcvAdapter(private val data: List<Subject>) : RecyclerView.Adapter<
         data[position].let {
             holder.view.tvName.text = it.name
             if (it.image != null) {
-                Picasso.get().load(it.image).resize(getDimension(R.dimen.size_192), 0).placeholder(R.drawable.ic_menu).into(holder.view.imvImage)
+                Picasso.get().load(it.image).resize(getDimension(R.dimen.thumbnail_160), 0).placeholder(R.drawable.ic_book_holder).into(holder.view.imvImage)
             } else {
-                holder.view.imvImage.setImageResource(R.drawable.ic_menu)
+                holder.view.imvImage.setImageResource(R.drawable.ic_book_holder)
             }
             holder.view.root.setOnClickListener { _ ->
                 onClickListener(it)

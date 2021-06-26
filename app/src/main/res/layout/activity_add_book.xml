@@ -10,7 +10,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="@dimen/margin_4"
+            android:layout_marginHorizontal="4dp"
             android:text="Class"
             android:textColor="@color/black"
             android:textSize="@dimen/text_large" />
@@ -24,7 +24,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="@dimen/margin_4"
+            android:layout_marginHorizontal="4dp"
             android:layout_marginTop="@dimen/margin_16"
             android:text="Subject"
             android:textColor="@color/black"
@@ -38,7 +38,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="@dimen/margin_4"
+            android:layout_marginHorizontal="4dp"
             android:layout_marginTop="@dimen/margin_16"
             android:text="Start page"
             android:textColor="@color/black"
