@@ -6,15 +6,12 @@ import android.content.Context
 import android.content.res.Resources
 import android.graphics.*
 import android.os.Handler
+import android.os.Looper
 import android.util.AttributeSet
 import android.view.View
 import com.app.bestbook.R
 import kotlin.math.min
 
-/**
- * Copyright (C) 2019 Mikhael LOPEZ
- * Licensed under the Apache License Version 2.0
- */
 class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(context, attrs) {
 
     companion object {
@@ -42,7 +39,6 @@ class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(
     var progress: Float = 0f
         set(value) {
             field = if (progress <= progressMax) value else progressMax
-            onProgressChangeListener?.invoke(progress)
             invalidate()
         }
     var progressMax: Float = DEFAULT_MAX_VALUE
@@ -135,24 +131,18 @@ class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(
     var indeterminateMode = false
         set(value) {
             field = value
-            onIndeterminateModeChangeListener?.invoke(field)
             progressIndeterminateMode = 0f
             progressDirectionIndeterminateMode = ProgressDirection.TO_RIGHT
             startAngleIndeterminateMode = DEFAULT_START_ANGLE
 
             indeterminateModeHandler?.removeCallbacks(indeterminateModeRunnable)
             progressAnimator?.cancel()
-            indeterminateModeHandler = Handler()
-
+            indeterminateModeHandler = Handler(Looper.getMainLooper())
             if (field) {
                 indeterminateModeHandler?.post(indeterminateModeRunnable)
             }
         }
-    var onProgressChangeListener: ((Float) -> Unit)? = null
-    var onIndeterminateModeChangeListener: ((Boolean) -> Unit)? = null
-    //endregion
 
-    //region Indeterminate Mode
     private var progressIndeterminateMode: Float = 0f
         set(value) {
             field = value
@@ -185,13 +175,8 @@ class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(
     private fun postIndeterminateModeHandler() {
         indeterminateModeHandler?.postDelayed(indeterminateModeRunnable, DEFAULT_ANIMATION_DURATION)
     }
-    //endregion
 
     init {
-        init(context, attrs)
-    }
-
-    private fun init(context: Context, attrs: AttributeSet?) {
         // Load the styled attributes and set their properties
         val attributes = context.theme.obtainStyledAttributes(attrs, R.styleable.CircularProgressBar, 0, 0)
 
@@ -205,16 +190,12 @@ class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(
 
         // Color
         progressBarColor = attributes.getInt(R.styleable.CircularProgressBar_cpb_progressbar_color, progressBarColor)
-        attributes.getColor(R.styleable.CircularProgressBar_cpb_progressbar_color_start, 0)
-            .also { if (it != 0) progressBarColorStart = it }
-        attributes.getColor(R.styleable.CircularProgressBar_cpb_progressbar_color_end, 0)
-            .also { if (it != 0) progressBarColorEnd = it }
+        attributes.getColor(R.styleable.CircularProgressBar_cpb_progressbar_color_start, 0).also { if (it != 0) progressBarColorStart = it }
+        attributes.getColor(R.styleable.CircularProgressBar_cpb_progressbar_color_end, 0).also { if (it != 0) progressBarColorEnd = it }
         progressBarColorDirection = attributes.getInteger(R.styleable.CircularProgressBar_cpb_progressbar_color_direction, progressBarColorDirection.value).toGradientDirection()
         backgroundProgressBarColor = attributes.getInt(R.styleable.CircularProgressBar_cpb_background_progressbar_color, backgroundProgressBarColor)
-        attributes.getColor(R.styleable.CircularProgressBar_cpb_background_progressbar_color_start, 0)
-            .also { if (it != 0) backgroundProgressBarColorStart = it }
-        attributes.getColor(R.styleable.CircularProgressBar_cpb_background_progressbar_color_end, 0)
-            .also { if (it != 0) backgroundProgressBarColorEnd = it }
+        attributes.getColor(R.styleable.CircularProgressBar_cpb_background_progressbar_color_start, 0).also { if (it != 0) backgroundProgressBarColorStart = it }
+        attributes.getColor(R.styleable.CircularProgressBar_cpb_background_progressbar_color_end, 0).also { if (it != 0) backgroundProgressBarColorEnd = it }
         backgroundProgressBarColorDirection = attributes.getInteger(R.styleable.CircularProgressBar_cpb_background_progressbar_color_direction, backgroundProgressBarColorDirection.value).toGradientDirection()
 
         // Progress Direction
@@ -238,7 +219,6 @@ class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(
         indeterminateModeHandler?.removeCallbacks(indeterminateModeRunnable)
     }
 
-    //region Draw Method
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         manageColor()
@@ -251,11 +231,9 @@ class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(
 
         canvas.drawOval(rectF, backgroundPaint)
         val realProgress = (if (indeterminateMode) progressIndeterminateMode else progress) * DEFAULT_MAX_VALUE / progressMax
-
         val isToRightFromIndeterminateMode = indeterminateMode && progressDirectionIndeterminateMode.isToRight()
         val isToRightFromNormalMode = !indeterminateMode && progressDirection.isToRight()
         val angle = (if (isToRightFromIndeterminateMode || isToRightFromNormalMode) 360 else -360) * realProgress / 100
-
         canvas.drawArc(rectF, if (indeterminateMode) startAngleIndeterminateMode else startAngle, angle, false, foregroundPaint)
     }
 
@@ -264,15 +242,18 @@ class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(
     }
 
     private fun manageColor() {
-        foregroundPaint.shader = createLinearGradient(progressBarColorStart ?: progressBarColor,
-            progressBarColorEnd ?: progressBarColor, progressBarColorDirection)
+        foregroundPaint.shader = createLinearGradient(
+            progressBarColorStart ?: progressBarColor,
+            progressBarColorEnd ?: progressBarColor, progressBarColorDirection
+        )
     }
 
     private fun manageBackgroundProgressBarColor() {
         backgroundPaint.shader = createLinearGradient(
             backgroundProgressBarColorStart ?: backgroundProgressBarColor,
             backgroundProgressBarColorEnd ?: backgroundProgressBarColor,
-            backgroundProgressBarColorDirection)
+            backgroundProgressBarColorDirection
+        )
     }
 
     private fun createLinearGradient(startColor: Int, endColor: Int, gradientDirection: GradientDirection): LinearGradient {
@@ -288,7 +269,6 @@ class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(
         }
         return LinearGradient(x0, y0, x1, y1, startColor, endColor, Shader.TileMode.CLAMP)
     }
-    //endregion
 
     //region Measure Method
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -299,7 +279,6 @@ class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(
         val highStroke = if (progressBarWidth > backgroundProgressBarWidth) progressBarWidth else backgroundProgressBarWidth
         rectF.set(0 + highStroke / 2, 0 + highStroke / 2, min - highStroke / 2, min - highStroke / 2)
     }
-    //endregion
 
     /**
      * Set the progress with animation.
@@ -310,10 +289,12 @@ class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(
      * @param startDelay [Long] optional, null by default.
      */
     @JvmOverloads
-    fun setProgressWithAnimation(progress: Float,
-                                 duration: Long? = null,
-                                 interpolator: TimeInterpolator? = null,
-                                 startDelay: Long? = null) {
+    fun setProgressWithAnimation(
+        progress: Float,
+        duration: Long? = null,
+        interpolator: TimeInterpolator? = null,
+        startDelay: Long? = null
+    ) {
         progressAnimator?.cancel()
         progressAnimator = ValueAnimator.ofFloat(if (indeterminateMode) progressIndeterminateMode else this.progress, progress)
         duration?.also { progressAnimator?.duration = it }
@@ -332,46 +313,35 @@ class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(
         progressAnimator?.start()
     }
 
-    //region Extensions Utils
-    private fun Float.dpToPx(): Float =
-        this * Resources.getSystem().displayMetrics.density
+    private fun Float.dpToPx(): Float = this * Resources.getSystem().displayMetrics.density
 
-    private fun Float.pxToDp(): Float =
-        this / Resources.getSystem().displayMetrics.density
+    private fun Float.pxToDp(): Float = this / Resources.getSystem().displayMetrics.density
 
-    private fun Int.toProgressDirection(): ProgressDirection =
-        when (this) {
-            1 -> ProgressDirection.TO_RIGHT
-            2 -> ProgressDirection.TO_LEFT
-            else -> throw IllegalArgumentException("This value is not supported for ProgressDirection: $this")
-        }
+    private fun Int.toProgressDirection(): ProgressDirection = when (this) {
+        1 -> ProgressDirection.TO_RIGHT
+        2 -> ProgressDirection.TO_LEFT
+        else -> throw IllegalArgumentException("This value is not supported for ProgressDirection: $this")
+    }
 
-    private fun ProgressDirection.reverse(): ProgressDirection =
-        if (this.isToRight()) ProgressDirection.TO_LEFT else ProgressDirection.TO_RIGHT
+    private fun ProgressDirection.reverse(): ProgressDirection = if (this.isToRight()) ProgressDirection.TO_LEFT else ProgressDirection.TO_RIGHT
 
     private fun ProgressDirection.isToRight(): Boolean = this == ProgressDirection.TO_RIGHT
 
-    private fun Int.toGradientDirection(): GradientDirection =
-        when (this) {
-            1 -> GradientDirection.LEFT_TO_RIGHT
-            2 -> GradientDirection.RIGHT_TO_LEFT
-            3 -> GradientDirection.TOP_TO_BOTTOM
-            4 -> GradientDirection.BOTTOM_TO_END
-            else -> throw IllegalArgumentException("This value is not supported for GradientDirection: $this")
-        }
-    //endregion
+    private fun Int.toGradientDirection(): GradientDirection = when (this) {
+        1 -> GradientDirection.LEFT_TO_RIGHT
+        2 -> GradientDirection.RIGHT_TO_LEFT
+        3 -> GradientDirection.TOP_TO_BOTTOM
+        4 -> GradientDirection.BOTTOM_TO_END
+        else -> throw IllegalArgumentException("This value is not supported for GradientDirection: $this")
+    }
 
-    /**
-     * ProgressDirection enum class to set the direction of the progress in progressBar
-     */
+    /** ProgressDirection enum class to set the direction of the progress in progressBar */
     enum class ProgressDirection(val value: Int) {
         TO_RIGHT(1),
         TO_LEFT(2)
     }
 
-    /**
-     * GradientDirection enum class to set the direction of the gradient progressBarColor
-     */
+    /** GradientDirection enum class to set the direction of the gradient progressBarColor */
     enum class GradientDirection(val value: Int) {
         LEFT_TO_RIGHT(1),
         RIGHT_TO_LEFT(2),

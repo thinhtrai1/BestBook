@@ -168,6 +168,14 @@ class AddBookActivity : BaseActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        intent?.getParcelableExtra<Uri?>(Intent.EXTRA_STREAM)?.let {
+            mFileUri = it
+            mBinding.tvFileName.text = mFileUri!!.lastPathSegment
+        }
+    }
+
     private fun addBook(classSelected: Int, subjectSelected: String, progressDialog: Dialog) {
         val subjectRef = mDatabaseReference
             .child(classSelected.toString())
