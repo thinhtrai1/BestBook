@@ -1,8 +1,6 @@
 package com.app.bestbook.ui.cropImage
 
 import android.app.Activity
-import android.content.Intent
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import androidx.databinding.DataBindingUtil
 import com.app.bestbook.R
@@ -17,16 +15,18 @@ class CropImageActivity : BaseActivity() {
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_crop_image)
 
         val uri = intent?.data ?: return
-        mBinding.cropImageView.setAspectRatio(100, 141)
-        mBinding.cropImageView.setSnapRadius(0.25f)
-        contentResolver.openInputStream(uri).use {
-            mBinding.cropImageView.setImageBitmap(BitmapFactory.decodeStream(it))
+        showLoading(true)
+        mBinding.cropImageView.setAspectRatio(17, 24)
+        mBinding.cropImageView.setImageUri(uri) {
+            showLoading(false)
         }
 
         mBinding.btnOk.setOnClickListener {
+            showLoading(true)
             mBinding.cropImageView.getCroppedImage {
+                showLoading(false)
                 it?.let {
-                    setResult(Activity.RESULT_OK, Intent().setData(it))
+                    setResult(Activity.RESULT_OK, intent.setData(it))
                 }
                 finish()
             }

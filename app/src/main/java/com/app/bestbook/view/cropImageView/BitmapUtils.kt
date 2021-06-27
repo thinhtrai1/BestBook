@@ -2,25 +2,13 @@ package com.app.bestbook.view.cropImageView
 
 import android.content.ContentResolver
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.BitmapRegionDecoder
-import android.graphics.Matrix
-import android.graphics.Rect
-import android.graphics.RectF
-import androidx.exifinterface.media.ExifInterface
+import android.graphics.*
 import android.net.Uri
 import android.os.Build
 import android.util.Log
-
-import java.io.Closeable
+import androidx.exifinterface.media.ExifInterface
 import java.io.File
 import java.io.FileNotFoundException
-import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
-import java.lang.ref.WeakReference
-
 import javax.microedition.khronos.egl.EGL10
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.egl.EGLContext
@@ -44,14 +32,11 @@ internal object BitmapUtils {
     /** Used to know the max texture size allowed to be rendered  */
     private var mMaxTextureSize: Int = 0
 
-    /** used to save bitmaps during state save and restore so not to reload them.  */
-    var mStateBitmap: Pair<String, WeakReference<Bitmap>>? = null
-
     /**
      * Get the max size of bitmap allowed to be rendered on the device.<br></br>
      * http://stackoverflow.com/questions/7428996/hw-accelerated-activity-how-to-get-opengl-texture-size-limit.
      */
-    private// Safe minimum default size
+    // Safe minimum default size
     // Get EGL Display
     // Initialise
     // Query total number of configurations
@@ -61,7 +46,7 @@ internal object BitmapUtils {
     // Keep track of the maximum texture size
     // Release
     // Return largest texture size found, or default
-    val maxTextureSize: Int
+    private val maxTextureSize: Int
         get() {
             val IMAGE_MAX_BITMAP_DIMENSION = 2048
 
@@ -114,6 +99,7 @@ internal object BitmapUtils {
                 `is`.close()
             }
         } catch (ignored: Exception) {
+            ignored.printStackTrace()
         }
 
         return if (ei != null) rotateBitmapByExif(
@@ -143,18 +129,16 @@ internal object BitmapUtils {
     /** Decode bitmap from stream using sampling to get bitmap with the requested limit.  */
     fun decodeSampledBitmap(
         context: Context,
-        uri: Uri,
-        reqWidth: Int,
-        reqHeight: Int
+        uri: Uri
     ): BitmapSampled {
-
+        val metrics = context.resources.displayMetrics
+        val densityAdj = if (metrics.density > 1) 1 / metrics.density else 1F
+        val reqWidth = (metrics.widthPixels * densityAdj).toInt()
+        val reqHeight = (metrics.heightPixels * densityAdj).toInt()
         try {
             val resolver = context.contentResolver
-
             // First decode with inJustDecodeBounds=true to check dimensions
-            val options =
-                decodeImageForOption(resolver, uri)
-
+            val options = decodeImageForOption(resolver, uri)
             // Calculate inSampleSize
             options.inSampleSize = Math.max(
                 calculateInSampleSizeByReqestedSize(
@@ -165,22 +149,42 @@ internal object BitmapUtils {
                     options.outHeight
                 )
             )
-
             // Decode bitmap with inSampleSize set
-            val bitmap =
-                decodeImage(resolver, uri, options)
-
-            return BitmapSampled(
-                bitmap,
-                options.inSampleSize
-            )
-
+            val bitmap = decodeImage(resolver, uri, options)
+            return BitmapSampled(bitmap, options.inSampleSize)
         } catch (e: Exception) {
             throw RuntimeException(
                 "Failed to load sampled bitmap: " + uri + "\r\n" + e.message, e
             )
         }
+    }
 
+    /** Decode bitmap from stream using sampling to get bitmap with the requested limit.  */
+    fun decodeSampledBitmap(
+        context: Context,
+        bitmap: Bitmap
+    ): BitmapSampled {
+        val metrics = context.resources.displayMetrics
+        val densityAdj = if (metrics.density > 1) 1 / metrics.density else 1F
+        val reqWidth = (bitmap.width * densityAdj).toInt()
+        val reqHeight = (bitmap.height * densityAdj).toInt()
+        try {
+            val scaleBitmap = Bitmap.createScaledBitmap(bitmap, reqWidth, reqHeight, false)
+            val sampleSize = Math.max(
+                calculateInSampleSizeByReqestedSize(
+                    bitmap.width, bitmap.height, reqWidth, reqHeight
+                ),
+                calculateInSampleSizeByMaxTextureSize(
+                    bitmap.width,
+                    bitmap.height
+                )
+            )
+            return BitmapSampled(scaleBitmap, sampleSize)
+        } catch (e: Exception) {
+            throw RuntimeException(
+                "Failed to load sampled bitmap: " + "\r\n" + e.message, e
+            )
+        }
     }
 
     /**
@@ -508,19 +512,13 @@ internal object BitmapUtils {
         compressFormat: Bitmap.CompressFormat,
         compressQuality: Int
     ) {
-        var outputStream: OutputStream? = null
-        try {
-            outputStream = context.contentResolver.openOutputStream(uri)
-            bitmap?.compress(compressFormat, compressQuality, outputStream)
-        } finally {
-            closeSafe(outputStream)
+        context.contentResolver.openOutputStream(uri)?.use {
+            bitmap?.compress(compressFormat, compressQuality, it)
         }
     }
 
     /** Resize the given bitmap to the given width/height by the given option.<br></br>  */
-    fun resizeBitmap(
-        bitmap: Bitmap, reqWidth: Int, reqHeight: Int, options: CropImageView.RequestSizeOptions
-    ): Bitmap {
+    fun resizeBitmap(bitmap: Bitmap, reqWidth: Int, reqHeight: Int, options: CropImageView.RequestSizeOptions, isRecycle: Boolean = true): Bitmap {
         try {
             if (reqWidth > 0 && reqHeight > 0
                         && ((options === CropImageView.RequestSizeOptions.RESIZE_FIT
@@ -540,7 +538,7 @@ internal object BitmapUtils {
                     }
                 }
                 if (resized != null) {
-                    if (resized != bitmap) {
+                    if (resized != bitmap && isRecycle) {
                         bitmap.recycle()
                     }
                     return resized
@@ -743,17 +741,12 @@ internal object BitmapUtils {
     /** Decode image from uri using "inJustDecodeBounds" to get the image dimensions.  */
     @Throws(FileNotFoundException::class)
     private fun decodeImageForOption(resolver: ContentResolver, uri: Uri): BitmapFactory.Options {
-        var stream: InputStream? = null
-        try {
-            stream = resolver.openInputStream(uri)
+        resolver.openInputStream(uri).use {
             val options = BitmapFactory.Options()
             options.inJustDecodeBounds = true
-            BitmapFactory.decodeStream(stream,
-                EMPTY_RECT, options)
+            BitmapFactory.decodeStream(it, EMPTY_RECT, options)
             options.inJustDecodeBounds = false
             return options
-        } finally {
-            closeSafe(stream)
         }
     }
 
@@ -766,15 +759,12 @@ internal object BitmapUtils {
         resolver: ContentResolver, uri: Uri, options: BitmapFactory.Options
     ): Bitmap? {
         do {
-            var stream: InputStream? = null
-            try {
-                stream = resolver.openInputStream(uri)
-                return BitmapFactory.decodeStream(stream,
-                    EMPTY_RECT, options)
-            } catch (e: OutOfMemoryError) {
-                options.inSampleSize *= 2
-            } finally {
-                closeSafe(stream)
+            resolver.openInputStream(uri).use {
+                try {
+                    return BitmapFactory.decodeStream(it, EMPTY_RECT, options)
+                } catch (e: OutOfMemoryError) {
+                    options.inSampleSize *= 2
+                }
             }
         } while (options.inSampleSize <= 512)
         throw RuntimeException("Failed to decode image: $uri")
@@ -789,35 +779,26 @@ internal object BitmapUtils {
     private fun decodeSampledBitmapRegion(
         context: Context, uri: Uri, rect: Rect, reqWidth: Int, reqHeight: Int, sampleMulti: Int
     ): BitmapSampled {
-        var stream: InputStream? = null
         var decoder: BitmapRegionDecoder? = null
         try {
             val options = BitmapFactory.Options()
             options.inSampleSize = (sampleMulti * calculateInSampleSizeByReqestedSize(
                 rect.width(), rect.height(), reqWidth, reqHeight
             ))
-
-            stream = context.contentResolver.openInputStream(uri)
-            decoder = BitmapRegionDecoder.newInstance(stream, false)
-            do {
-                try {
-                    return BitmapSampled(
-                        decoder!!.decodeRegion(rect, options),
-                        options.inSampleSize
-                    )
-                } catch (e: OutOfMemoryError) {
-                    options.inSampleSize *= 2
-                }
-
-            } while (options.inSampleSize <= 512)
+            context.contentResolver.openInputStream(uri)?.use {
+                decoder = BitmapRegionDecoder.newInstance(it, false)
+                do {
+                    try {
+                        return BitmapSampled(decoder!!.decodeRegion(rect, options), options.inSampleSize)
+                    } catch (e: OutOfMemoryError) {
+                        options.inSampleSize *= 2
+                    }
+                } while (options.inSampleSize <= 512)
+            }
         } catch (e: Exception) {
-            throw RuntimeException(
-                "Failed to load sampled bitmap: " + uri + "\r\n" + e.message, e
-            )
-        } finally {
-            closeSafe(stream)
-            decoder?.recycle()
+            throw RuntimeException("Failed to load sampled bitmap: " + uri + "\r\n" + e.message, e)
         }
+        decoder?.recycle()
         return BitmapSampled(null, 1)
     }
 
@@ -937,25 +918,6 @@ internal object BitmapUtils {
             return bitmap
         }
     }
-
-    /**
-     * Close the given closeable object (Stream) in a safe way: check if it is null and catch-log
-     * exception thrown.
-     *
-     * @param closeable the closable object to close
-     */
-    private fun closeSafe(closeable: Closeable?) {
-        if (closeable != null) {
-            try {
-                closeable.close()
-            } catch (ignored: IOException) {
-            }
-
-        }
-    }
-    // endregion
-
-    // region: Inner class: BitmapSampled
 
     /** Holds bitmap instance and the sample size that the bitmap was loaded/cropped with.  */
     internal class BitmapSampled(

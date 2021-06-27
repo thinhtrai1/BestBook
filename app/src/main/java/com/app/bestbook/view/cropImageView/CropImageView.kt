@@ -1,18 +1,19 @@
 package com.app.bestbook.view.cropImageView
 
 import android.content.Context
-import android.util.AttributeSet
-import android.widget.FrameLayout
-import android.view.LayoutInflater
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.graphics.Rect
+import android.graphics.RectF
 import android.net.Uri
-import androidx.exifinterface.media.ExifInterface
+import android.util.AttributeSet
+import android.view.LayoutInflater
+import android.widget.FrameLayout
 import android.widget.ImageView
 import com.app.bestbook.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 
 class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(context, attrs) {
@@ -40,6 +41,8 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
     private var mRestoreCropWindowRect: RectF? = null
     private var mRestoreDegreesRotated = 0
     private var mSizeChanged = false
+    private var mLoadedImageUri: Uri? = null
+    private var mLoadedSampleSize = 1
 
     init {
         val ta = context.obtainStyledAttributes(attrs, R.styleable.CropImageView, 0, 0)
@@ -60,6 +63,105 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
     private fun validate() {
         require(mMaxZoom >= 0) { "Cannot set max zoom to a number < 1" }
         mCropOverlayView.validate()
+    }
+
+    fun setImageBitmap(bitmap: Bitmap, onDisplay: (() -> Unit)? = null) {
+        mCropOverlayView.setInitialCropWindowRect(null)
+        GlobalScope.launch(Dispatchers.IO) {
+            val file = File.createTempFile("temp_", ".jpg", context.cacheDir)
+            file.outputStream().use { outputStream ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                bitmap.recycle()
+            }
+            mLoadedImageUri = Uri.fromFile(file)
+        }
+        GlobalScope.launch(Dispatchers.IO) {
+            val result = BitmapUtils.decodeSampledBitmap(context, bitmap)
+            mLoadedSampleSize = result.sampleSize
+            GlobalScope.launch(Dispatchers.Main) {
+                result.bitmap?.let {
+                    setBitmap(it, 0)
+                }
+                onDisplay?.invoke()
+            }
+        }
+    }
+
+    fun setImageUri(uri: Uri, onDisplay: (() -> Unit)? = null) {
+        mCropOverlayView.setInitialCropWindowRect(null)
+        mLoadedImageUri = uri
+        GlobalScope.launch(Dispatchers.IO) {
+            val result = BitmapUtils.decodeSampledBitmap(context, uri)
+            mLoadedSampleSize = result.sampleSize
+            val bitmap = result.bitmap?.let {
+                BitmapUtils.rotateBitmapByExif(it, context, uri)
+            }
+            GlobalScope.launch(Dispatchers.Main) {
+                bitmap?.let {
+                    setBitmap(it.bitmap, it.degrees)
+                }
+                onDisplay?.invoke()
+            }
+        }
+    }
+
+    private fun setBitmap(bitmap: Bitmap, degreesRotated: Int) {
+        if (mBitmap == null || mBitmap != bitmap) {
+            mImageView.clearAnimation()
+            clearImageInt()
+            mBitmap = bitmap
+            mImageView.setImageBitmap(bitmap)
+            mDegreesRotated = degreesRotated
+            applyImageMatrix(width.toFloat(), height.toFloat(), true, false)
+            mCropOverlayView.resetCropOverlayView()
+        }
+    }
+
+    fun getCroppedImage(callback: (Uri?) -> Unit) {
+        getCroppedImage(0, 0, RequestSizeOptions.NONE, callback)
+    }
+
+    fun getCroppedImage(reqWidth: Int, reqHeight: Int, callback: (Uri?) -> Unit) {
+        getCroppedImage(reqWidth, reqHeight, RequestSizeOptions.RESIZE_INSIDE, callback)
+    }
+
+    fun getCroppedImage(reqWidth: Int, reqHeight: Int, options: RequestSizeOptions, callback: (Uri?) -> Unit) {
+        GlobalScope.launch(Dispatchers.IO) {
+            val uri = if (mBitmap != null && mLoadedImageUri != null) {
+                val width = if (options != RequestSizeOptions.NONE) reqWidth else 0
+                val height = if (options != RequestSizeOptions.NONE) reqHeight else 0
+                val orgWidth = mBitmap!!.width * mLoadedSampleSize
+                val orgHeight = mBitmap!!.height * mLoadedSampleSize
+                var croppedBitmap = BitmapUtils.cropBitmap(
+                    context,
+                    mLoadedImageUri!!,
+                    getCropPoints(),
+                    mDegreesRotated,
+                    orgWidth,
+                    orgHeight,
+                    mCropOverlayView.isFixAspectRatio(),
+                    mCropOverlayView.getAspectRatioX(),
+                    mCropOverlayView.getAspectRatioY(),
+                    width,
+                    height,
+                    mFlipHorizontally,
+                    mFlipVertically
+                ).bitmap!!
+                croppedBitmap = BitmapUtils.resizeBitmap(croppedBitmap, width, height, options)
+                val file = File.createTempFile("temp_", ".jpg", context.cacheDir)
+                file.outputStream().use { outputStream ->
+                    croppedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                    croppedBitmap.recycle()
+                }
+                Uri.fromFile(file)
+            } else {
+                null
+            }
+            GlobalScope.launch(Dispatchers.Main) {
+                mImageView.clearAnimation()
+                callback(uri)
+            }
+        }
     }
 
     fun setScaleType(scaleType: ScaleType) {
@@ -210,6 +312,9 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
         )
         mImageMatrix.invert(mImageInverseMatrix)
         mImageInverseMatrix.mapPoints(points)
+        for (i in points.indices) {
+            points[i] = points[i] * mLoadedSampleSize
+        }
         return points
     }
 
@@ -235,78 +340,9 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
         mCropOverlayView.resetCropWindowRect()
     }
 
-    fun getCroppedImage(callback: (Uri?) -> Unit) {
-        getCroppedImage(0, 0, RequestSizeOptions.NONE, callback)
-    }
-
-    fun getCroppedImage(reqWidth: Int, reqHeight: Int, callback: (Uri?) -> Unit) {
-        getCroppedImage(reqWidth, reqHeight, RequestSizeOptions.RESIZE_INSIDE, callback)
-    }
-
-    fun getCroppedImage(reqWidth: Int, reqHeight: Int, options: RequestSizeOptions, callback: (Uri?) -> Unit) {
-        GlobalScope.launch(Dispatchers.IO) {
-            val uri = if (mBitmap == null) {
-                mImageView.clearAnimation()
-                val width = if (options != RequestSizeOptions.NONE) reqWidth else 0
-                val height = if (options != RequestSizeOptions.NONE) reqHeight else 0
-                var croppedBitmap = BitmapUtils.cropBitmapObjectHandleOOM(
-                    mBitmap!!,
-                    getCropPoints(),
-                    mDegreesRotated,
-                    mCropOverlayView.isFixAspectRatio(),
-                    mCropOverlayView.getAspectRatioX(),
-                    mCropOverlayView.getAspectRatioY(),
-                    mFlipHorizontally,
-                    mFlipVertically
-                ).bitmap!!
-                croppedBitmap = BitmapUtils.resizeBitmap(croppedBitmap, width, height, options)
-                val file = File.createTempFile("temp_", ".png", context.cacheDir)
-                file.outputStream().use { outputStream ->
-                    croppedBitmap.compress(Bitmap.CompressFormat.PNG, 0, outputStream)
-                    croppedBitmap.recycle()
-                }
-                Uri.fromFile(file)
-            } else {
-                null
-            }
-            GlobalScope.launch(Dispatchers.Main) {
-                callback(uri)
-            }
-        }
-    }
-
-    fun setImageBitmap(bitmap: Bitmap) {
-        mCropOverlayView.setInitialCropWindowRect(null)
-        setBitmap(bitmap, 0)
-    }
-
-    /**
-     * Sets a Bitmap and initializes the image rotation according to the EXIT data.<br></br>
-     * <br></br>
-     * The EXIF can be retrieved by doing the following: `
-     * ExifInterface exif = new ExifInterface(path);`
-     *
-     * @param bitmap the original bitmap to set; if null, this
-     * @param exif the EXIF information about this bitmap; may be null
-     */
-    fun setImageBitmap(bitmap: Bitmap, exif: ExifInterface?) {
-        val setBitmap: Bitmap
-        val degreesRotated: Int
-        if (exif != null) {
-            val result = BitmapUtils.rotateBitmapByExif(bitmap, exif)
-            setBitmap = result.bitmap
-            degreesRotated = result.degrees
-            mInitialDegreesRotated = result.degrees
-        } else {
-            setBitmap = bitmap
-            degreesRotated = 0
-        }
-        mCropOverlayView.setInitialCropWindowRect(null)
-        setBitmap(setBitmap, degreesRotated)
-    }
-
     fun clearImage() {
         clearImageInt()
+        mLoadedImageUri = null
         mCropOverlayView.setInitialCropWindowRect(null)
     }
 
@@ -388,18 +424,6 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
     fun flipImageVertically() {
         mFlipVertically = !mFlipVertically
         applyImageMatrix(width.toFloat(), height.toFloat(), true, false)
-    }
-
-    private fun setBitmap(bitmap: Bitmap?, degreesRotated: Int) {
-        if (mBitmap == null || mBitmap != bitmap) {
-            mImageView.clearAnimation()
-            clearImageInt()
-            mBitmap = bitmap
-            mImageView.setImageBitmap(mBitmap)
-            mDegreesRotated = degreesRotated
-            applyImageMatrix(width.toFloat(), height.toFloat(), true, false)
-            mCropOverlayView.resetCropOverlayView()
-        }
     }
 
     /**
@@ -677,12 +701,12 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
     private fun mapImagePointsByImageMatrix() {
         mImagePoints[0] = 0F
         mImagePoints[1] = 0F
-        mImagePoints[2] = mBitmap?.width?.toFloat()!!
+        mImagePoints[2] = mBitmap!!.width.toFloat()
         mImagePoints[3] = 0F
-        mImagePoints[4] = mBitmap?.width?.toFloat()!!
-        mImagePoints[5] = mBitmap?.height?.toFloat()!!
+        mImagePoints[4] = mBitmap!!.width.toFloat()
+        mImagePoints[5] = mBitmap!!.height.toFloat()
         mImagePoints[6] = 0F
-        mImagePoints[7] = mBitmap?.height?.toFloat()!!
+        mImagePoints[7] = mBitmap!!.height.toFloat()
         mImageMatrix.mapPoints(mImagePoints)
         mScaleImagePoints[0] = 0F
         mScaleImagePoints[1] = 0F

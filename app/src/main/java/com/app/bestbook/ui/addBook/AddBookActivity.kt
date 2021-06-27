@@ -221,20 +221,15 @@ class AddBookActivity : BaseActivity() {
     }
 
     private fun editImage(uri: Uri) {
-        mImageUri = uri
-//        val editIntent = Intent(Intent.ACTION_EDIT)
-//            .setDataAndType(uri, "image/*")
-//            .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-//        mEditForResult.launch(Intent.createChooser(editIntent, "Edit your photo"))
-        val i = Intent(this, CropImageActivity::class.java).setData(mImageUri)
+        val i = Intent(this, CropImageActivity::class.java).setData(uri)
         mEditForResult.launch(i)
     }
 
     private val mEditForResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         result.data?.data?.let {
             mImageUri = it
+            mBinding.imvImage.setImageURI(mImageUri)
         }
-        mBinding.imvImage.setImageURI(mImageUri)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
