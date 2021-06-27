@@ -68,7 +68,6 @@
         <attr name="cropTouchRadius" format="dimension" />
         <attr name="cropSaveBitmapToInstanceState" format="boolean" />
         <attr name="cropShowCropOverlay" format="boolean" />
-        <attr name="cropShowProgressBar" format="boolean" />
         <attr name="cropMinCropWindowWidth" format="dimension" />
         <attr name="cropMinCropWindowHeight" format="dimension" />
         <attr name="cropMinCropResultWidthPX" format="float" />

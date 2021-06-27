@@ -8,6 +8,9 @@ import android.graphics.RectF
 import android.net.Uri
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.Animation
+import android.view.animation.Transformation
 import android.widget.FrameLayout
 import android.widget.ImageView
 import com.app.bestbook.R
@@ -15,11 +18,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.File
+import kotlin.*
+import kotlin.math.*
 
 class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(context, attrs) {
     private val mImageView: ImageView
     private val mCropOverlayView: CropOverlayView
-
     private val mImageMatrix = Matrix()
     private val mImageInverseMatrix = Matrix()
     private val mImagePoints = FloatArray(8)
@@ -128,25 +132,38 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
     fun getCroppedImage(reqWidth: Int, reqHeight: Int, options: RequestSizeOptions, callback: (Uri?) -> Unit) {
         GlobalScope.launch(Dispatchers.IO) {
             val uri = if (mBitmap != null && mLoadedImageUri != null) {
-                val width = if (options != RequestSizeOptions.NONE) reqWidth else 0
-                val height = if (options != RequestSizeOptions.NONE) reqHeight else 0
-                val orgWidth = mBitmap!!.width * mLoadedSampleSize
-                val orgHeight = mBitmap!!.height * mLoadedSampleSize
-                var croppedBitmap = BitmapUtils.cropBitmap(
-                    context,
-                    mLoadedImageUri!!,
-                    getCropPoints(),
-                    mDegreesRotated,
-                    orgWidth,
-                    orgHeight,
-                    mCropOverlayView.isFixAspectRatio(),
-                    mCropOverlayView.getAspectRatioX(),
-                    mCropOverlayView.getAspectRatioY(),
-                    width,
-                    height,
-                    mFlipHorizontally,
-                    mFlipVertically
-                ).bitmap!!
+                var croppedBitmap = if (mLoadedSampleSize > 1 || options == RequestSizeOptions.SAMPLING) {
+                    val width = if (options != RequestSizeOptions.NONE) reqWidth else 0
+                    val height = if (options != RequestSizeOptions.NONE) reqHeight else 0
+                    val orgWidth = mBitmap!!.width * mLoadedSampleSize
+                    val orgHeight = mBitmap!!.height * mLoadedSampleSize
+                    BitmapUtils.cropBitmap(
+                        context,
+                        mLoadedImageUri!!,
+                        getCropPoints(),
+                        mDegreesRotated,
+                        orgWidth,
+                        orgHeight,
+                        mCropOverlayView.isFixAspectRatio(),
+                        mCropOverlayView.getAspectRatioX(),
+                        mCropOverlayView.getAspectRatioY(),
+                        width,
+                        height,
+                        mFlipHorizontally,
+                        mFlipVertically
+                    ).bitmap!!
+                } else {
+                    BitmapUtils.cropBitmapObjectHandleOOM(
+                        mBitmap!!,
+                        getCropPoints(),
+                        mDegreesRotated,
+                        mCropOverlayView.isFixAspectRatio(),
+                        mCropOverlayView.getAspectRatioX(),
+                        mCropOverlayView.getAspectRatioY(),
+                        mFlipHorizontally,
+                        mFlipVertically
+                    ).bitmap!!
+                }
                 croppedBitmap = BitmapUtils.resizeBitmap(croppedBitmap, width, height, options)
                 val file = File.createTempFile("temp_", ".jpg", context.cacheDir)
                 file.outputStream().use { outputStream ->
@@ -377,21 +394,17 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
             applyImageMatrix(width.toFloat(), height.toFloat(), true, false)
             // adjust the zoom so the crop window size remains the same even after image scale change
             mImageMatrix.mapPoints(BitmapUtils.POINTS2, BitmapUtils.POINTS)
-            mZoom /= Math.sqrt(
-                Math.pow(
-                    (BitmapUtils.POINTS2[4] - BitmapUtils.POINTS2[2]).toDouble(),
-                    2.0
-                ) + Math.pow((BitmapUtils.POINTS2[5] - BitmapUtils.POINTS2[3]).toDouble(), 2.0)
+            mZoom /= sqrt(
+                (BitmapUtils.POINTS2[4] - BitmapUtils.POINTS2[2]).toDouble().pow(2.0) + (BitmapUtils.POINTS2[5] - BitmapUtils.POINTS2[3]).toDouble().pow(2.0)
             ).toFloat()
-            mZoom = Math.max(mZoom, 1f)
+            mZoom = max(mZoom, 1f)
 
             applyImageMatrix(width.toFloat(), height.toFloat(), true, false)
             mImageMatrix.mapPoints(BitmapUtils.POINTS2, BitmapUtils.POINTS)
 
             // adjust the width/height by the changes in scaling to the image
-            val change = Math.sqrt(
-                Math.pow((BitmapUtils.POINTS2[4] - BitmapUtils.POINTS2[2]).toDouble(), 2.0) +
-                        Math.pow((BitmapUtils.POINTS2[5] - BitmapUtils.POINTS2[3]).toDouble(), 2.0)
+            val change = sqrt(
+                (BitmapUtils.POINTS2[4] - BitmapUtils.POINTS2[2]).toDouble().pow(2.0) + (BitmapUtils.POINTS2[5] - BitmapUtils.POINTS2[3]).toDouble().pow(2.0)
             )
             halfWidth *= change.toFloat()
             halfHeight *= change.toFloat()
@@ -558,17 +571,17 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
                 var newZoom = 0f
                 // keep the cropping window covered area to 50%-65% of zoomed sub-area
                 if (mZoom < mMaxZoom && cropRect.width() < width * 0.5f && cropRect.height() < height * 0.5f) {
-                    newZoom = Math.min(
+                    newZoom = min(
                         mMaxZoom.toFloat(),
-                        Math.min(
+                        min(
                             width / (cropRect.width() / mZoom / 0.64f), height / (cropRect.height() / mZoom / 0.64f)
                         )
                     )
                 }
                 if (mZoom > 1 && (cropRect.width() > width * 0.65f || cropRect.height() > height * 0.65f)) {
-                    newZoom = Math.max(
+                    newZoom = max(
                         1f,
-                        Math.min(
+                        min(
                             width / (cropRect.width() / mZoom / 0.51f), height / (cropRect.height() / mZoom / 0.51f)
                         )
                     )
@@ -617,7 +630,7 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
                 mapImagePointsByImageMatrix()
             }
             // scale the image to the image view, image rect transformed to know new width/height
-            val scale = Math.min(
+            val scale = min(
                 width / BitmapUtils.getRectWidth(mImagePoints),
                 height / BitmapUtils.getRectHeight(mImagePoints)
             )
@@ -646,8 +659,8 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
                 mZoomOffsetX = if (width > BitmapUtils.getRectWidth(mImagePoints))
                     0F
                 else
-                    Math.max(
-                        Math.min(
+                    max(
+                        min(
                             width / 2 - cropRect.centerX(), -BitmapUtils.getRectLeft(mImagePoints)
                         ),
                         getWidth() - BitmapUtils.getRectRight(mImagePoints)
@@ -655,20 +668,20 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
                 mZoomOffsetY = if (height > BitmapUtils.getRectHeight(mImagePoints))
                     0F
                 else
-                    (Math.max(
-                        Math.min(
+                    (max(
+                        min(
                             height / 2 - cropRect.centerY(), -BitmapUtils.getRectTop(mImagePoints)
                         ),
                         getHeight() - BitmapUtils.getRectBottom(mImagePoints)
                     ) / scaleY)
             } else {
                 // adjust the zoomed area so the crop window rectangle will be inside the area in case it was moved outside
-                mZoomOffsetX = Math.min(
-                    Math.max(mZoomOffsetX * scaleX, -cropRect.left),
+                mZoomOffsetX = min(
+                    max(mZoomOffsetX * scaleX, -cropRect.left),
                     -cropRect.right + width
                 ) / scaleX
-                mZoomOffsetY = Math.min(
-                    Math.max(mZoomOffsetY * scaleY, -cropRect.top),
+                mZoomOffsetY = min(
+                    max(mZoomOffsetY * scaleY, -cropRect.top),
                     -cropRect.bottom + height
                 ) / scaleY
             }
@@ -686,7 +699,7 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
                 mAnimation?.setEndState(mImagePoints, mImageMatrix)
                 mImageView.startAnimation(mAnimation)
             } else {
-                mImageView.setImageMatrix(mImageMatrix)
+                mImageView.imageMatrix = mImageMatrix
             }
             // update the image rectangle in the crop overlay
             updateImageBounds(false)
@@ -737,7 +750,7 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
             }
             MeasureSpec.AT_MOST -> {
                 // Can't be bigger than...; match_parent value
-                Math.min(desiredSize, measureSpecSize)
+                min(desiredSize, measureSpecSize)
             }
             else -> {
                 // Be whatever you want; wrap_content
@@ -758,6 +771,68 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
         }
         // set the bitmap rectangle and update the crop window after scale factor is set
         mCropOverlayView.setBounds(if (clear) null else mImagePoints, width, height)
+    }
+
+    private class CropImageAnimation(private val mImageView: ImageView, private val mCropOverlayView: CropOverlayView) : Animation(), Animation.AnimationListener {
+        private val mStartBoundPoints = FloatArray(8)
+        private val mEndBoundPoints = FloatArray(8)
+        private val mStartCropWindowRect = RectF()
+        private val mEndCropWindowRect = RectF()
+        private val mStartImageMatrix = FloatArray(9)
+        private val mEndImageMatrix = FloatArray(9)
+        private val mAnimRect = RectF()
+        private val mAnimPoints = FloatArray(8)
+        private val mAnimMatrix = FloatArray(9)
+
+        init {
+            duration = 300
+            fillAfter = true
+            interpolator = AccelerateDecelerateInterpolator()
+            setAnimationListener(this)
+        }
+
+        fun setStartState(boundPoints: FloatArray, imageMatrix: Matrix) {
+            reset()
+            System.arraycopy(boundPoints, 0, mStartBoundPoints, 0, 8)
+            mStartCropWindowRect.set(mCropOverlayView.getCropWindowRect())
+            imageMatrix.getValues(mStartImageMatrix)
+        }
+
+        fun setEndState(boundPoints: FloatArray, imageMatrix: Matrix) {
+            System.arraycopy(boundPoints, 0, mEndBoundPoints, 0, 8)
+            mEndCropWindowRect.set(mCropOverlayView.getCropWindowRect())
+            imageMatrix.getValues(mEndImageMatrix)
+        }
+
+        override fun applyTransformation(interpolatedTime: Float, t: Transformation) {
+            mAnimRect.left = mStartCropWindowRect.left + (mEndCropWindowRect.left - mStartCropWindowRect.left) * interpolatedTime
+            mAnimRect.top = mStartCropWindowRect.top + (mEndCropWindowRect.top - mStartCropWindowRect.top) * interpolatedTime
+            mAnimRect.right = mStartCropWindowRect.right + (mEndCropWindowRect.right - mStartCropWindowRect.right) * interpolatedTime
+            mAnimRect.bottom = mStartCropWindowRect.bottom + (mEndCropWindowRect.bottom - mStartCropWindowRect.bottom) * interpolatedTime
+            mCropOverlayView.setCropWindowRect(mAnimRect)
+            for (i in mAnimPoints.indices) {
+                mAnimPoints[i] =
+                    mStartBoundPoints[i] + (mEndBoundPoints[i] - mStartBoundPoints[i]) * interpolatedTime
+            }
+            mCropOverlayView.setBounds(mAnimPoints, mImageView.width, mImageView.height)
+
+            for (i in mAnimMatrix.indices) {
+                mAnimMatrix[i] = mStartImageMatrix[i] + (mEndImageMatrix[i] - mStartImageMatrix[i]) * interpolatedTime
+            }
+            val m = mImageView.imageMatrix
+            m.setValues(mAnimMatrix)
+            mImageView.imageMatrix = m
+            mImageView.invalidate()
+            mCropOverlayView.invalidate()
+        }
+
+        override fun onAnimationStart(animation: Animation) {}
+
+        override fun onAnimationEnd(animation: Animation) {
+            mImageView.clearAnimation()
+        }
+
+        override fun onAnimationRepeat(animation: Animation) {}
     }
 
     enum class CropShape {

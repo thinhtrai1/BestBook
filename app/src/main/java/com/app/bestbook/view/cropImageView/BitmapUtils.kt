@@ -4,17 +4,16 @@ import android.content.ContentResolver
 import android.content.Context
 import android.graphics.*
 import android.net.Uri
-import android.os.Build
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
-import java.io.File
 import java.io.FileNotFoundException
 import javax.microedition.khronos.egl.EGL10
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.egl.EGLContext
+import kotlin.math.*
 
 /** Utility class that deals with operations with an ImageView.  */
-internal object BitmapUtils {
+object BitmapUtils {
 
     val EMPTY_RECT = Rect()
 
@@ -48,8 +47,7 @@ internal object BitmapUtils {
     // Return largest texture size found, or default
     private val maxTextureSize: Int
         get() {
-            val IMAGE_MAX_BITMAP_DIMENSION = 2048
-
+            val maxBitmapDimension = 2048
             try {
                 val egl = EGLContext.getEGL() as EGL10
                 val display = egl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY)
@@ -64,23 +62,19 @@ internal object BitmapUtils {
                     totalConfigurations[0],
                     totalConfigurations
                 )
-
                 val textureSize = IntArray(1)
                 var maximumTextureSize = 0
                 for (i in 0 until totalConfigurations[0]) {
-                    egl.eglGetConfigAttrib(
-                        display, configurationsList[i], EGL10.EGL_MAX_PBUFFER_WIDTH, textureSize
-                    )
+                    egl.eglGetConfigAttrib(display, configurationsList[i], EGL10.EGL_MAX_PBUFFER_WIDTH, textureSize)
                     if (maximumTextureSize < textureSize[0]) {
                         maximumTextureSize = textureSize[0]
                     }
                 }
                 egl.eglTerminate(display)
-                return Math.max(maximumTextureSize, IMAGE_MAX_BITMAP_DIMENSION)
+                return max(maximumTextureSize, maxBitmapDimension)
             } catch (e: Exception) {
-                return IMAGE_MAX_BITMAP_DIMENSION
+                return maxBitmapDimension
             }
-
         }
 
     /**
@@ -89,23 +83,12 @@ internal object BitmapUtils {
      * New bitmap is created and the old one is recycled.
      */
     fun rotateBitmapByExif(bitmap: Bitmap, context: Context, uri: Uri): RotateBitmapResult {
-        var ei: ExifInterface? = null
-        try {
-            val `is` = context.contentResolver.openInputStream(uri)
-            if (`is` != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    ei = ExifInterface(`is`)
-                }
-                `is`.close()
-            }
-        } catch (ignored: Exception) {
-            ignored.printStackTrace()
+        val ei = context.contentResolver.openInputStream(uri)?.use {
+            ExifInterface(it)
         }
-
-        return if (ei != null) rotateBitmapByExif(
-            bitmap,
-            ei
-        ) else RotateBitmapResult(bitmap, 0)
+        return if (ei != null)
+            rotateBitmapByExif(bitmap, ei)
+        else RotateBitmapResult(bitmap, 0)
     }
 
     /**
@@ -113,24 +96,20 @@ internal object BitmapUtils {
      * If no rotation is required the image will not be rotated.<br></br>
      * New bitmap is created and the old one is recycled.
      */
-    fun rotateBitmapByExif(bitmap: Bitmap, exif: ExifInterface): RotateBitmapResult {
+    private fun rotateBitmapByExif(bitmap: Bitmap, exif: ExifInterface): RotateBitmapResult {
+        val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
         val degrees: Int
-        val orientation =
-            exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-        when (orientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> degrees = 90
-            ExifInterface.ORIENTATION_ROTATE_180 -> degrees = 180
-            ExifInterface.ORIENTATION_ROTATE_270 -> degrees = 270
-            else -> degrees = 0
+        degrees = when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270
+            else -> 0
         }
         return RotateBitmapResult(bitmap, degrees)
     }
 
     /** Decode bitmap from stream using sampling to get bitmap with the requested limit.  */
-    fun decodeSampledBitmap(
-        context: Context,
-        uri: Uri
-    ): BitmapSampled {
+    fun decodeSampledBitmap(context: Context, uri: Uri): BitmapSampled {
         val metrics = context.resources.displayMetrics
         val densityAdj = if (metrics.density > 1) 1 / metrics.density else 1F
         val reqWidth = (metrics.widthPixels * densityAdj).toInt()
@@ -140,60 +119,40 @@ internal object BitmapUtils {
             // First decode with inJustDecodeBounds=true to check dimensions
             val options = decodeImageForOption(resolver, uri)
             // Calculate inSampleSize
-            options.inSampleSize = Math.max(
-                calculateInSampleSizeByReqestedSize(
-                    options.outWidth, options.outHeight, reqWidth, reqHeight
-                ),
-                calculateInSampleSizeByMaxTextureSize(
-                    options.outWidth,
-                    options.outHeight
-                )
+            options.inSampleSize = max(
+                calculateInSampleSizeByReqestedSize(options.outWidth, options.outHeight, reqWidth, reqHeight),
+                calculateInSampleSizeByMaxTextureSize(options.outWidth, options.outHeight)
             )
             // Decode bitmap with inSampleSize set
             val bitmap = decodeImage(resolver, uri, options)
             return BitmapSampled(bitmap, options.inSampleSize)
         } catch (e: Exception) {
-            throw RuntimeException(
-                "Failed to load sampled bitmap: " + uri + "\r\n" + e.message, e
-            )
+            throw RuntimeException("Failed to load sampled bitmap: " + uri + "\r\n" + e.message, e)
         }
     }
 
     /** Decode bitmap from stream using sampling to get bitmap with the requested limit.  */
-    fun decodeSampledBitmap(
-        context: Context,
-        bitmap: Bitmap
-    ): BitmapSampled {
+    fun decodeSampledBitmap(context: Context, bitmap: Bitmap): BitmapSampled {
         val metrics = context.resources.displayMetrics
         val densityAdj = if (metrics.density > 1) 1 / metrics.density else 1F
         val reqWidth = (bitmap.width * densityAdj).toInt()
         val reqHeight = (bitmap.height * densityAdj).toInt()
         try {
             val scaleBitmap = Bitmap.createScaledBitmap(bitmap, reqWidth, reqHeight, false)
-            val sampleSize = Math.max(
-                calculateInSampleSizeByReqestedSize(
-                    bitmap.width, bitmap.height, reqWidth, reqHeight
-                ),
-                calculateInSampleSizeByMaxTextureSize(
-                    bitmap.width,
-                    bitmap.height
-                )
+            val sampleSize = max(
+                calculateInSampleSizeByReqestedSize(bitmap.width, bitmap.height, reqWidth, reqHeight),
+                calculateInSampleSizeByMaxTextureSize(bitmap.width, bitmap.height)
             )
             return BitmapSampled(scaleBitmap, sampleSize)
         } catch (e: Exception) {
-            throw RuntimeException(
-                "Failed to load sampled bitmap: " + "\r\n" + e.message, e
-            )
+            throw RuntimeException("Failed to load sampled bitmap: " + "\r\n" + e.message, e)
         }
     }
 
     /**
-     * Crop image bitmap from given bitmap using the given points in the original bitmap and the given
-     * rotation.<br></br>
-     * if the rotation is not 0,90,180 or 270 degrees then we must first crop a larger area of the
-     * image that contains the requires rectangle, rotate and then crop again a sub rectangle.<br></br>
-     * If crop fails due to OOM we scale the cropping image by 0.5 every time it fails until it is
-     * small enough.
+     * Crop image bitmap from given bitmap using the given points in the original bitmap and the given rotation.<br></br>
+     * if the rotation is not 0,90,180 or 270 degrees then we must first crop a larger area of the image that contains the requires rectangle, rotate and then crop again a sub rectangle.<br></br>
+     * If crop fails due to OOM we scale the cropping image by 0.5 every time it fails until it is small enough.
      */
     fun cropBitmapObjectHandleOOM(
         bitmap: Bitmap,
@@ -208,40 +167,32 @@ internal object BitmapUtils {
         var scale = 1
         while (true) {
             try {
-                val cropBitmap =
-                    cropBitmapObjectWithScale(
-                        bitmap,
-                        points,
-                        degreesRotated,
-                        fixAspectRatio,
-                        aspectRatioX,
-                        aspectRatioY,
-                        1 / scale.toFloat(),
-                        flipHorizontally,
-                        flipVertically
-                    )
-                return BitmapSampled(
-                    cropBitmap,
-                    scale
+                val cropBitmap = cropBitmapObjectWithScale(
+                    bitmap,
+                    points,
+                    degreesRotated,
+                    fixAspectRatio,
+                    aspectRatioX,
+                    aspectRatioY,
+                    1 / scale.toFloat(),
+                    flipHorizontally,
+                    flipVertically
                 )
+                return BitmapSampled(cropBitmap, scale)
             } catch (e: OutOfMemoryError) {
                 scale *= 2
                 if (scale > 8) {
                     throw e
                 }
             }
-
         }
     }
 
     /**
-     * Crop image bitmap from given bitmap using the given points in the original bitmap and the given
-     * rotation.<br></br>
-     * if the rotation is not 0,90,180 or 270 degrees then we must first crop a larger area of the
-     * image that contains the requires rectangle, rotate and then crop again a sub rectangle.
+     * Crop image bitmap from given bitmap using the given points in the original bitmap and the given rotation.<br></br>
+     * if the rotation is not 0,90,180 or 270 degrees then we must first crop a larger area of the image that contains the requires rectangle, rotate and then crop again a sub rectangle.
      *
-     * @param scale how much to scale the cropped image part, use 0.5 to lower the image by half (OOM
-     * handling)
+     * @param scale how much to scale the cropped image part, use 0.5 to lower the image by half (OOM handling)
      */
     private fun cropBitmapObjectWithScale(
         bitmap: Bitmap,
@@ -254,9 +205,7 @@ internal object BitmapUtils {
         flipHorizontally: Boolean,
         flipVertically: Boolean
     ): Bitmap {
-
-        // get the rectangle in original image that contains the required cropped area (larger for non
-        // rectangular crop)
+        // get the rectangle in original image that contains the required cropped area (larger for non rectangular crop)
         val rect = getRectFromPoints(
             points,
             bitmap.width,
@@ -265,19 +214,14 @@ internal object BitmapUtils {
             aspectRatioX,
             aspectRatioY
         )
-
         // crop and rotate the cropped image in one operation
         val matrix = Matrix()
-        matrix.setRotate(
-            degreesRotated.toFloat(),
-            (bitmap.width / 2).toFloat(),
-            (bitmap.height / 2).toFloat()
-        )
+        matrix.setRotate(degreesRotated.toFloat(), bitmap.width / 2f, bitmap.height / 2f)
         matrix.postScale(
             if (flipHorizontally) -scale else scale,
             if (flipVertically) -scale else scale
         )
-        var result: Bitmap = Bitmap.createBitmap(
+        var result = Bitmap.createBitmap(
             bitmap,
             rect.left,
             rect.top,
@@ -286,28 +230,20 @@ internal object BitmapUtils {
             matrix,
             true
         )
-
         if (result == bitmap) {
             // corner case when all bitmap is selected, no worth optimizing for it
             result = bitmap.copy(bitmap.config, false)
         }
-
         // rotating by 0, 90, 180 or 270 degrees doesn't require extra cropping
         if (degreesRotated % 90 != 0) {
-
-            // extra crop because non rectangular crop cannot be done directly on the image without
-            // rotating first
-            result = cropForRotatedImage(
-                result, points, rect, degreesRotated, fixAspectRatio, aspectRatioX, aspectRatioY
-            )
+            // extra crop because non rectangular crop cannot be done directly on the image without rotating first
+            result = cropForRotatedImage(result, points, rect, degreesRotated, fixAspectRatio, aspectRatioX, aspectRatioY)
         }
-
         return result
     }
 
     /**
-     * Crop image bitmap from URI by decoding it with specific width and height to down-sample if
-     * required.<br></br>
+     * Crop image bitmap from URI by decoding it with specific width and height to down-sample if required.<br></br>
      * Additionally if OOM is thrown try to increase the sampling (2,4,8).
      */
     fun cropBitmap(
@@ -349,39 +285,30 @@ internal object BitmapUtils {
                 // if OOM try to increase the sampling to lower the memory usage
                 sampleMulti *= 2
                 if (sampleMulti > 16) {
-                    throw RuntimeException(
-                        "Failed to handle OOM by sampling ("
-                                + sampleMulti
-                                + "): "
-                                + loadedImageUri
-                                + "\r\n"
-                                + e.message,
-                        e
-                    )
+                    throw RuntimeException("Failed to handle OOM by sampling (" + sampleMulti + "): " + loadedImageUri + "\r\n" + e.message, e)
                 }
             }
-
         }
     }
 
     /** Get left value of the bounding rectangle of the given points.  */
     fun getRectLeft(points: FloatArray): Float {
-        return Math.min(Math.min(Math.min(points[0], points[2]), points[4]), points[6])
+        return min(min(min(points[0], points[2]), points[4]), points[6])
     }
 
     /** Get top value of the bounding rectangle of the given points.  */
     fun getRectTop(points: FloatArray): Float {
-        return Math.min(Math.min(Math.min(points[1], points[3]), points[5]), points[7])
+        return min(min(min(points[1], points[3]), points[5]), points[7])
     }
 
     /** Get right value of the bounding rectangle of the given points.  */
     fun getRectRight(points: FloatArray): Float {
-        return Math.max(Math.max(Math.max(points[0], points[2]), points[4]), points[6])
+        return max(max(max(points[0], points[2]), points[4]), points[6])
     }
 
     /** Get bottom value of the bounding rectangle of the given points.  */
     fun getRectBottom(points: FloatArray): Float {
-        return Math.max(Math.max(Math.max(points[1], points[3]), points[5]), points[7])
+        return max(max(max(points[1], points[3]), points[5]), points[7])
     }
 
     /** Get width of the bounding rectangle of the given points.  */
@@ -412,10 +339,7 @@ internal object BitmapUtils {
         )) / 2f
     }
 
-    /**
-     * Get a rectangle for the given 4 points (x0,y0,x1,y1,x2,y2,x3,y3) by finding the min/max 2
-     * points that contains the given 4 points and is a straight rectangle.
-     */
+    /** Get a rectangle for the given 4 points (x0,y0,x1,y1,x2,y2,x3,y3) by finding the min/max 2 points that contains the given 4 points and is a straight rectangle. */
     fun getRectFromPoints(
         points: FloatArray,
         imageWidth: Int,
@@ -424,28 +348,14 @@ internal object BitmapUtils {
         aspectRatioX: Int,
         aspectRatioY: Int
     ): Rect {
-        val left = Math.round(Math.max(0f,
-            getRectLeft(points)
-        ))
-        val top = Math.round(Math.max(0f,
-            getRectTop(points)
-        ))
-        val right = Math.round(Math.min(imageWidth.toFloat(),
-            getRectRight(points)
-        ))
-        val bottom = Math.round(Math.min(imageHeight.toFloat(),
-            getRectBottom(points)
-        ))
-
+        val left = max(0f, getRectLeft(points)).roundToInt()
+        val top = max(0f, getRectTop(points)).roundToInt()
+        val right = min(imageWidth.toFloat(), getRectRight(points)).roundToInt()
+        val bottom = min(imageHeight.toFloat(), getRectBottom(points)).roundToInt()
         val rect = Rect(left, top, right, bottom)
         if (fixAspectRatio) {
-            fixRectForAspectRatio(
-                rect,
-                aspectRatioX,
-                aspectRatioY
-            )
+            fixRectForAspectRatio(rect, aspectRatioX, aspectRatioY)
         }
-
         return rect
     }
 
@@ -463,78 +373,21 @@ internal object BitmapUtils {
         }
     }
 
-    /**
-     * Write given bitmap to a temp file. If file already exists no-op as we already saved the file in
-     * this session. Uses JPEG 95% compression.
-     *
-     * @param uri the uri to write the bitmap to, if null
-     * @return the uri where the image was saved in, either the given uri or new pointing to temp
-     * file.
-     */
-    fun writeTempStateStoreBitmap(context: Context, bitmap: Bitmap, uri: Uri?): Uri? {
-        var uri = uri
-        try {
-            var needSave = true
-            if (uri == null) {
-                uri = Uri.fromFile(
-                    File.createTempFile("aic_state_store_temp", ".jpg", context.cacheDir)
-                )
-            } else if (File(uri.path!!).exists()) {
-                needSave = false
-            }
-            if (needSave ) {
-                writeBitmapToUri(
-                    context,
-                    bitmap,
-                    uri!!,
-                    Bitmap.CompressFormat.JPEG,
-                    95
-                )
-            }
-            return uri
-        } catch (e: Exception) {
-            Log.w(
-                "AIC",
-                "Failed to write bitmap to temp file for image-cropper save instance state",
-                e
-            )
-            return null
-        }
-
-    }
-
-    /** Write the given bitmap to the given uri using the given compression.  */
-    @Throws(FileNotFoundException::class)
-    fun writeBitmapToUri(
-        context: Context,
-        bitmap: Bitmap?,
-        uri: Uri,
-        compressFormat: Bitmap.CompressFormat,
-        compressQuality: Int
-    ) {
-        context.contentResolver.openOutputStream(uri)?.use {
-            bitmap?.compress(compressFormat, compressQuality, it)
-        }
-    }
-
     /** Resize the given bitmap to the given width/height by the given option.<br></br>  */
     fun resizeBitmap(bitmap: Bitmap, reqWidth: Int, reqHeight: Int, options: CropImageView.RequestSizeOptions, isRecycle: Boolean = true): Bitmap {
         try {
             if (reqWidth > 0 && reqHeight > 0
-                        && ((options === CropImageView.RequestSizeOptions.RESIZE_FIT
-                        || options === CropImageView.RequestSizeOptions.RESIZE_INSIDE
-                        || options === CropImageView.RequestSizeOptions.RESIZE_EXACT))) {
+                && (options === CropImageView.RequestSizeOptions.RESIZE_FIT || options === CropImageView.RequestSizeOptions.RESIZE_INSIDE || options === CropImageView.RequestSizeOptions.RESIZE_EXACT)
+            ) {
                 var resized: Bitmap? = null
                 if (options === CropImageView.RequestSizeOptions.RESIZE_EXACT) {
                     resized = Bitmap.createScaledBitmap(bitmap, reqWidth, reqHeight, false)
                 } else {
                     val width = bitmap.width
                     val height = bitmap.height
-                    val scale = Math.max(width / reqWidth.toFloat(), height / reqHeight.toFloat())
+                    val scale = max(width / reqWidth.toFloat(), height / reqHeight.toFloat())
                     if (scale > 1 || options === CropImageView.RequestSizeOptions.RESIZE_FIT) {
-                        resized = Bitmap.createScaledBitmap(
-                            bitmap, (width / scale).toInt(), (height / scale).toInt(), false
-                        )
+                        resized = Bitmap.createScaledBitmap(bitmap, (width / scale).toInt(), (height / scale).toInt(), false)
                     }
                 }
                 if (resized != null) {
@@ -547,15 +400,11 @@ internal object BitmapUtils {
         } catch (e: Exception) {
             Log.w("AIC", "Failed to resize cropped image, return bitmap before resize", e)
         }
-
         return bitmap
     }
 
-    // region: Private methods
-
     /**
-     * Crop image bitmap from URI by decoding it with specific width and height to down-sample if
-     * required.
+     * Crop image bitmap from URI by decoding it with specific width and height to down-sample if required.
      *
      * @param orgWidth used to get rectangle from points (handle edge cases to limit rectangle)
      * @param orgHeight used to get rectangle from points (handle edge cases to limit rectangle)
@@ -577,9 +426,7 @@ internal object BitmapUtils {
         flipVertically: Boolean,
         sampleMulti: Int
     ): BitmapSampled {
-
-        // get the rectangle in original image that contains the required cropped area (larger for non
-        // rectangular crop)
+        // get the rectangle in original image that contains the required cropped area (larger for non rectangular crop)
         val rect = getRectFromPoints(
             points,
             orgWidth,
@@ -588,45 +435,36 @@ internal object BitmapUtils {
             aspectRatioX,
             aspectRatioY
         )
-
         val width = if (reqWidth > 0) reqWidth else rect.width()
         val height = if (reqHeight > 0) reqHeight else rect.height()
-
         var result: Bitmap? = null
         var sampleSize = 1
         try {
-            // decode only the required image from URI, optionally sub-sampling if reqWidth/reqHeight is
-            // given.
-            val bitmapSampled =
-                decodeSampledBitmapRegion(
-                    context,
-                    loadedImageUri,
-                    rect,
-                    width,
-                    height,
-                    sampleMulti
-                )
+            // decode only the required image from URI, optionally sub-sampling if reqWidth/reqHeight is given.
+            val bitmapSampled = decodeSampledBitmapRegion(
+                context,
+                loadedImageUri,
+                rect,
+                width,
+                height,
+                sampleMulti
+            )
             result = bitmapSampled.bitmap
             sampleSize = bitmapSampled.sampleSize
-        } catch (ignored: Exception) {
+        } catch (e: Exception) {
         }
-
         if (result != null) {
             try {
                 // rotate the decoded region by the required amount
-                result =
-                    rotateAndFlipBitmapInt(
-                        result,
-                        degreesRotated,
-                        flipHorizontally,
-                        flipVertically
-                    )
-
+                result = rotateAndFlipBitmapInt(
+                    result,
+                    degreesRotated,
+                    flipHorizontally,
+                    flipVertically
+                )
                 // rotating by 0, 90, 180 or 270 degrees doesn't require extra cropping
                 if (degreesRotated % 90 != 0) {
-
-                    // extra crop because non rectangular crop cannot be done directly on the image without
-                    // rotating first
+                    // extra crop because non rectangular crop cannot be done directly on the image without rotating first
                     result = cropForRotatedImage(
                         result,
                         points,
@@ -641,7 +479,6 @@ internal object BitmapUtils {
                 result.recycle()
                 throw e
             }
-
             return BitmapSampled(result, sampleSize)
         } else {
             // failed to decode region, may be skia issue, try full decode and then crop
@@ -663,10 +500,7 @@ internal object BitmapUtils {
         }
     }
 
-    /**
-     * Crop bitmap by fully loading the original and then cropping it, fallback in case cropping
-     * region failed.
-     */
+    /** Crop bitmap by fully loading the original and then cropping it, fallback in case cropping region failed. */
     private fun cropBitmap(
         context: Context,
         loadedImageUri: Uri,
@@ -693,7 +527,6 @@ internal object BitmapUtils {
                 height
             ))
             options.inSampleSize = sampleSize
-
             val fullBitmap = decodeImage(
                 context.contentResolver,
                 loadedImageUri,
@@ -707,19 +540,17 @@ internal object BitmapUtils {
                     for (i in points2.indices) {
                         points2[i] = points2[i] / options.inSampleSize
                     }
-
-                    result =
-                        cropBitmapObjectWithScale(
-                            fullBitmap,
-                            points2,
-                            degreesRotated,
-                            fixAspectRatio,
-                            aspectRatioX,
-                            aspectRatioY,
-                            1f,
-                            flipHorizontally,
-                            flipVertically
-                        )
+                    result = cropBitmapObjectWithScale(
+                        fullBitmap,
+                        points2,
+                        degreesRotated,
+                        fixAspectRatio,
+                        aspectRatioX,
+                        aspectRatioY,
+                        1f,
+                        flipHorizontally,
+                        flipVertically
+                    )
                 } finally {
                     if (result != fullBitmap) {
                         fullBitmap.recycle()
@@ -730,11 +561,8 @@ internal object BitmapUtils {
             result?.recycle()
             throw e
         } catch (e: Exception) {
-            throw RuntimeException(
-                "Failed to load sampled bitmap: " + loadedImageUri + "\r\n" + e.message, e
-            )
+            throw RuntimeException("Failed to load sampled bitmap: " + loadedImageUri + "\r\n" + e.message, e)
         }
-
         return BitmapSampled(result, sampleSize)
     }
 
@@ -750,14 +578,9 @@ internal object BitmapUtils {
         }
     }
 
-    /**
-     * Decode image from uri using given "inSampleSize", but if failed due to out-of-memory then raise
-     * the inSampleSize until success.
-     */
+    /** Decode image from uri using given "inSampleSize", but if failed due to out-of-memory then raise the inSampleSize until success. */
     @Throws(FileNotFoundException::class)
-    private fun decodeImage(
-        resolver: ContentResolver, uri: Uri, options: BitmapFactory.Options
-    ): Bitmap? {
+    private fun decodeImage(resolver: ContentResolver, uri: Uri, options: BitmapFactory.Options): Bitmap? {
         do {
             resolver.openInputStream(uri).use {
                 try {
@@ -771,14 +594,11 @@ internal object BitmapUtils {
     }
 
     /**
-     * Decode specific rectangle bitmap from stream using sampling to get bitmap with the requested
-     * limit.
+     * Decode specific rectangle bitmap from stream using sampling to get bitmap with the requested limit.
      *
      * @param sampleMulti used to increase the sampling of the image to handle memory issues.
      */
-    private fun decodeSampledBitmapRegion(
-        context: Context, uri: Uri, rect: Rect, reqWidth: Int, reqHeight: Int, sampleMulti: Int
-    ): BitmapSampled {
+    private fun decodeSampledBitmapRegion(context: Context, uri: Uri, rect: Rect, reqWidth: Int, reqHeight: Int, sampleMulti: Int): BitmapSampled {
         var decoder: BitmapRegionDecoder? = null
         try {
             val options = BitmapFactory.Options()
@@ -804,8 +624,7 @@ internal object BitmapUtils {
 
     /**
      * Special crop of bitmap rotated by not stright angle, in this case the original crop bitmap
-     * contains parts beyond the required crop area, this method crops the already cropped and rotated
-     * bitmap to the final rectangle.<br></br>
+     * contains parts beyond the required crop area, this method crops the already cropped and rotated bitmap to the final rectangle.<br></br>
      * Note: rotating by 0, 90, 180 or 270 degrees doesn't require extra cropping.
      */
     private fun cropForRotatedImage(
@@ -817,26 +636,23 @@ internal object BitmapUtils {
         aspectRatioX: Int,
         aspectRatioY: Int
     ): Bitmap {
-        var bitmap = bitmap
         if (degreesRotated % 90 != 0) {
-
             var adjLeft = 0
             var adjTop = 0
             var width = 0
             var height = 0
             val rads = Math.toRadians(degreesRotated.toDouble())
-            val compareTo =
-                if (degreesRotated < 90 || (degreesRotated > 180 && degreesRotated < 270))
-                    rect.left
-                else
-                    rect.right
+            val compareTo = if (degreesRotated < 90 || (degreesRotated in 181..269))
+                rect.left
+            else
+                rect.right
             var i = 0
             while (i < points.size) {
                 if (points[i] >= compareTo - 1 && points[i] <= compareTo + 1) {
-                    adjLeft = Math.abs(Math.sin(rads) * (rect.bottom - points[i + 1])).toInt()
-                    adjTop = Math.abs(Math.cos(rads) * (points[i + 1] - rect.top)).toInt()
-                    width = Math.abs((points[i + 1] - rect.top) / Math.sin(rads)).toInt()
-                    height = Math.abs((rect.bottom - points[i + 1]) / Math.cos(rads)).toInt()
+                    adjLeft = abs(sin(rads) * (rect.bottom - points[i + 1])).toInt()
+                    adjTop = abs(cos(rads) * (points[i + 1] - rect.top)).toInt()
+                    width = abs((points[i + 1] - rect.top) / sin(rads)).toInt()
+                    height = abs((rect.bottom - points[i + 1]) / cos(rads)).toInt()
                     break
                 }
                 i += 2
@@ -850,23 +666,18 @@ internal object BitmapUtils {
                     aspectRatioY
                 )
             }
-
-            val bitmapTmp = bitmap
-            bitmap = Bitmap.createBitmap(bitmap!!, rect.left, rect.top, rect.width(), rect.height())
-            if (bitmapTmp != bitmap) {
-                bitmapTmp!!.recycle()
+            val cropBitmap = Bitmap.createBitmap(bitmap, rect.left, rect.top, rect.width(), rect.height())
+            if (bitmap != cropBitmap) {
+                bitmap.recycle()
             }
+            return cropBitmap
+        } else {
+            return bitmap
         }
-        return bitmap
     }
 
-    /**
-     * Calculate the largest inSampleSize value that is a power of 2 and keeps both height and width
-     * larger than the requested height and width.
-     */
-    private fun calculateInSampleSizeByReqestedSize(
-        width: Int, height: Int, reqWidth: Int, reqHeight: Int
-    ): Int {
+    /** Calculate the largest inSampleSize value that is a power of 2 and keeps both height and width larger than the requested height and width. */
+    private fun calculateInSampleSizeByReqestedSize(width: Int, height: Int, reqWidth: Int, reqHeight: Int): Int {
         var inSampleSize = 1
         if (height > reqHeight || width > reqWidth) {
             while ((height / 2 / inSampleSize) > reqHeight && (width / 2 / inSampleSize) > reqWidth) {
@@ -876,18 +687,14 @@ internal object BitmapUtils {
         return inSampleSize
     }
 
-    /**
-     * Calculate the largest inSampleSize value that is a power of 2 and keeps both height and width
-     * smaller than max texture size allowed for the device.
-     */
+    /** Calculate the largest inSampleSize value that is a power of 2 and keeps both height and width smaller than max texture size allowed for the device. */
     private fun calculateInSampleSizeByMaxTextureSize(width: Int, height: Int): Int {
         var inSampleSize = 1
         if (mMaxTextureSize == 0) {
-            mMaxTextureSize =
-                maxTextureSize
+            mMaxTextureSize = maxTextureSize
         }
         if (mMaxTextureSize > 0) {
-            while (((height / inSampleSize) > mMaxTextureSize || (width / inSampleSize) > mMaxTextureSize)) {
+            while ((height / inSampleSize) > mMaxTextureSize || (width / inSampleSize) > mMaxTextureSize) {
                 inSampleSize *= 2
             }
         }
@@ -898,44 +705,37 @@ internal object BitmapUtils {
      * Rotate the given bitmap by the given degrees.<br></br>
      * New bitmap is created and the old one is recycled.
      */
-    private fun rotateAndFlipBitmapInt(
-        bitmap: Bitmap, degrees: Int, flipHorizontally: Boolean, flipVertically: Boolean
-    ): Bitmap {
-        if (degrees > 0 || flipHorizontally || flipVertically) {
+    private fun rotateAndFlipBitmapInt(bitmap: Bitmap, degrees: Int, flipHorizontally: Boolean, flipVertically: Boolean): Bitmap {
+        return if (degrees > 0 || flipHorizontally || flipVertically) {
             val matrix = Matrix()
             matrix.setRotate(degrees.toFloat())
             matrix.postScale(
                 (if (flipHorizontally) -1 else 1).toFloat(),
                 (if (flipVertically) -1 else 1).toFloat()
             )
-            val newBitmap =
-                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, false)
+            val newBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, false)
             if (newBitmap != bitmap) {
                 bitmap.recycle()
             }
-            return newBitmap
+            newBitmap
         } else {
-            return bitmap
+            bitmap
         }
     }
 
     /** Holds bitmap instance and the sample size that the bitmap was loaded/cropped with.  */
-    internal class BitmapSampled(
+    class BitmapSampled(
         /** The bitmap instance  */
         val bitmap: Bitmap?,
         /** The sample size used to lower the size of the bitmap (1,2,4,8,...)  */
         val sampleSize: Int
     )
-    // endregion
-
-    // region: Inner class: RotateBitmapResult
 
     /** The result of [.rotateBitmapByExif].  */
-    internal class RotateBitmapResult(
+    class RotateBitmapResult(
         /** The loaded bitmap  */
         val bitmap: Bitmap,
         /** The degrees the image was rotated  */
         val degrees: Int
     )
-    // endregion
 }

@@ -21,10 +21,7 @@ import com.app.bestbook.model.Book
 import com.app.bestbook.model.Subject
 import com.app.bestbook.ui.cropImage.CropImageActivity
 import com.app.bestbook.ui.home.HomeActivity
-import com.app.bestbook.util.Constant
-import com.app.bestbook.util.Utility
-import com.app.bestbook.util.isPermissionGranted
-import com.app.bestbook.util.showToast
+import com.app.bestbook.util.*
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -50,7 +47,7 @@ class AddBookActivity : BaseActivity() {
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_add_book)
         supportActionBar?.title = getString(R.string.add_book)
 
-        if (Firebase.auth.currentUser?.email != "admin@vnbooks.com") {
+        if (Firebase.auth.currentUser?.email != Constant.ADMIN.email()) {
             startActivity(Intent(this, HomeActivity::class.java))
             finish()
             return
