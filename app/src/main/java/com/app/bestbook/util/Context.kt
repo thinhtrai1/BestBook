@@ -24,3 +24,4 @@ fun Context.isPermissionGranted(vararg permissions: String): Boolean {
 fun getDimension(dimenRes: Int) = Application.instance.resources.getDimensionPixelSize(dimenRes)
 
 fun String.email() = plus("@vnbooks.com")
+fun String.emailToUsername() = split("@vnbooks.com")[0]

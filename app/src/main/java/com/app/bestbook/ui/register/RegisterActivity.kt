@@ -17,15 +17,13 @@ import com.app.bestbook.base.BaseActivity
 import com.app.bestbook.databinding.ActivityRegisterBinding
 import com.app.bestbook.model.User
 import com.app.bestbook.ui.home.HomeActivity
-import com.app.bestbook.util.Constant
-import com.app.bestbook.util.email
-import com.app.bestbook.util.isPermissionGranted
-import com.app.bestbook.util.showToast
+import com.app.bestbook.util.*
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
+import com.squareup.picasso.Picasso
 import java.io.File
 
 class RegisterActivity: BaseActivity() {
@@ -36,42 +34,64 @@ class RegisterActivity: BaseActivity() {
         super.onCreate(savedInstanceState)
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_register)
 
+        mViewModel.user?.let {
+            with(mBinding) {
+                it.image?.let { url ->
+                    Picasso.get().load(url).resizeDimen(R.dimen.avatar_size, R.dimen.avatar_size).centerCrop().into(imvAvatar)
+                }
+                edtUserName.isEnabled = false
+                edtUserName.setText(mViewModel.sharedPreferencesHelper[Constant.PREF_EMAIL]?.emailToUsername())
+                edtName.setText(it.name)
+                edtGrade.setText(it.grade)
+                edtPhone.setText(it.phone)
+                btnLogin.text = getString(R.string.update)
+            }
+        }
+
         mBinding.btnLogin.setOnClickListener {
             if (isValid()) {
                 showLoading(true)
-                val email = mBinding.edtUserName.text.toString().trim().email()
-                val password = mBinding.edtPassword.text.toString().trim()
-                Firebase.auth
-                    .createUserWithEmailAndPassword(email, password)
-                    .addOnSuccessListener { result ->
-                        val userId = result.user?.uid ?: return@addOnSuccessListener
-                        if (mViewModel.imageUri != null) {
-                            val reference = Firebase.storage.reference
-                                .child("user")
-                                .child(userId)
-                                .child(userId)
-                            reference
-                                .putFile(mViewModel.imageUri!!)
-                                .addOnFailureListener {
-                                    showLoading(false)
-                                    showToast(it.message)
-                                }
-                                .addOnSuccessListener {
-                                    reference.downloadUrl.addOnSuccessListener {
-                                        addUser(email, password, userId, it.toString())
-                                    }
-                                }
-                        } else {
-                            addUser(email, password, userId, null)
+                if (mViewModel.user != null) { // updateProfile
+                    if (mViewModel.imageUri != null) {
+                        uploadImage(mViewModel.user!!.id!!) {
+                            addUser(
+                                mViewModel.sharedPreferencesHelper[Constant.PREF_EMAIL]!!,
+                                mViewModel.sharedPreferencesHelper[Constant.PREF_PASSWORD]!!,
+                                mViewModel.user!!.id!!,
+                                it
+                            )
                         }
+                    } else {
+                        addUser(
+                            mViewModel.sharedPreferencesHelper[Constant.PREF_EMAIL]!!,
+                            mViewModel.sharedPreferencesHelper[Constant.PREF_PASSWORD]!!,
+                            mViewModel.user!!.id!!,
+                            mViewModel.user!!.image
+                        )
                     }
-                    .addOnFailureListener {
-                        if (it is FirebaseAuthUserCollisionException && it.errorCode == "ERROR_EMAIL_ALREADY_IN_USE") {
-                            showToast(getString(R.string.select_other_username_message))
-                        } else {
-                            showToast(it.message)
+                } else { // register
+                    val email = mBinding.edtUserName.text.toString().trim().email()
+                    val password = mBinding.edtPassword.text.toString().trim()
+                    Firebase.auth
+                        .createUserWithEmailAndPassword(email, password)
+                        .addOnSuccessListener { result ->
+                            val userId = result.user?.uid ?: return@addOnSuccessListener
+                            if (mViewModel.imageUri != null) {
+                                uploadImage(userId) {
+                                    addUser(email, password, userId, it)
+                                }
+                            } else {
+                                addUser(email, password, userId, null)
+                            }
                         }
-                    }
+                        .addOnFailureListener {
+                            if (it is FirebaseAuthUserCollisionException && it.errorCode == "ERROR_EMAIL_ALREADY_IN_USE") {
+                                showToast(getString(R.string.select_other_username_message))
+                            } else {
+                                showToast(it.message)
+                            }
+                        }
+                }
             }
         }
 
@@ -96,6 +116,24 @@ class RegisterActivity: BaseActivity() {
         }
     }
 
+    private fun uploadImage(userId: String, onSuccess: (String) -> Unit) {
+        val reference = Firebase.storage.reference
+            .child("user")
+            .child(userId)
+            .child(userId)
+        reference
+            .putFile(mViewModel.imageUri!!)
+            .addOnFailureListener {
+                showLoading(false)
+                showToast(it.message)
+            }
+            .addOnSuccessListener {
+                reference.downloadUrl.addOnSuccessListener {
+                    onSuccess(it.toString())
+                }
+            }
+    }
+
     private fun addUser(email: String, password: String, userId: String, imageUrl: String?) {
         Firebase.database(Constant.FIREBASE_DATABASE).reference
             .child("user")
@@ -109,8 +147,13 @@ class RegisterActivity: BaseActivity() {
                 }
             )
             .addOnSuccessListener {
-                mViewModel.sharedPreferencesHelper.set(Constant.PREF_EMAIL, email)[Constant.PREF_PASSWORD] = password
-                showToast(getString(R.string.register_successfully))
+                if (mViewModel.user != null) {
+                    showToast(getString(R.string.update_profile_successfully))
+                } else {
+                    mViewModel.sharedPreferencesHelper[Constant.PREF_EMAIL] = email
+                    mViewModel.sharedPreferencesHelper[Constant.PREF_PASSWORD] = password
+                    showToast(getString(R.string.register_successfully))
+                }
                 showLoading(false)
                 startActivity(
                     Intent(this, HomeActivity::class.java)
@@ -187,6 +230,9 @@ class RegisterActivity: BaseActivity() {
             }
             if (edtPassword.text.length < 6) {
                 edtPassword.error = getString(R.string.password_invalid)
+                b = false
+            } else if (mViewModel.user != null && edtPassword.text.toString() != mViewModel.sharedPreferencesHelper[Constant.PREF_PASSWORD]) {
+                showToast(getString(R.string.wrong_password))
                 b = false
             }
             if (edtName.text.isBlank()) {

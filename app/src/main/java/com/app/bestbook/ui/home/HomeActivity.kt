@@ -5,6 +5,8 @@ import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.transition.ChangeBounds
 import android.transition.TransitionManager
 import android.view.LayoutInflater
@@ -41,6 +43,7 @@ class HomeActivity : BaseActivity() {
     private val mViewModel: HomeViewModel by viewModels()
     private val mConstraintSet = ConstraintSet()
     private val mFirebaseDatabase = Firebase.database(Constant.FIREBASE_DATABASE).reference
+    private var mUser: User? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,6 +85,11 @@ class HomeActivity : BaseActivity() {
             viewUpdateSubject.setOnClickListener {
                 startActivity(Intent(this@HomeActivity, UpdateSubjectActivity::class.java))
             }
+            viewUpdateProfile.setOnClickListener {
+                startActivity(
+                    Intent(this@HomeActivity, RegisterActivity::class.java).putExtra("user", mUser)
+                )
+            }
             viewLogout.setOnClickListener {
                 AlertDialog.Builder(this@HomeActivity)
                     .setMessage(R.string.logout_confirm_message)
@@ -103,7 +111,6 @@ class HomeActivity : BaseActivity() {
                     show()
                 }
             }
-//            tvShowPassword.setOnClickListener {  }
         }
 
         mViewModel.sharedPreferencesHelper.let {
@@ -179,6 +186,8 @@ class HomeActivity : BaseActivity() {
                 showLoading(false)
                 with(mBinding) {
                     snapshot.getValue(User::class.java)?.let {
+                        mUser = it
+                        mUser!!.id = googleUser.uid
                         if (it.isAdmin) {
                             viewAddBook.visibility = View.VISIBLE
                             viewUpdateSubject.visibility = View.VISIBLE
@@ -188,11 +197,13 @@ class HomeActivity : BaseActivity() {
                         tvClass.text = getString(R.string.class_format, it.grade)
                         tvSdt.text = it.phone
                         it.image?.let { url ->
-                            Picasso.get().load(url).into(imvAvatar)
+                            Picasso.get().load(url).resizeDimen(R.dimen.avatar_size, R.dimen.avatar_size).centerCrop().into(imvAvatar)
                         }
+                        viewUpdateProfile.visibility = View.VISIBLE
                         viewLogout.visibility = View.VISIBLE
                         viewLogin.visibility = View.GONE
-                        mViewModel.sharedPreferencesHelper.set(Constant.PREF_EMAIL, email)[Constant.PREF_PASSWORD] = password
+                        mViewModel.sharedPreferencesHelper[Constant.PREF_EMAIL] = email
+                        mViewModel.sharedPreferencesHelper[Constant.PREF_PASSWORD] = password
                     }
                     imvCloseLogin.performClick()
                     edtUserName.setText("")
@@ -200,5 +211,22 @@ class HomeActivity : BaseActivity() {
                 }
             }
         })
+    }
+
+    private var isDoubleClickToFinish = false
+    override fun onBackPressed() {
+        if (mBinding.layoutContainer.isDrawerOpen(mBinding.layoutMenu)) {
+            mBinding.layoutContainer.closeDrawer(mBinding.layoutMenu)
+        } else {
+            if (isDoubleClickToFinish) {
+                super.onBackPressed()
+            } else {
+                showToast(getString(R.string.tap_again_to_exit))
+                Handler(Looper.getMainLooper()).postDelayed({
+                    isDoubleClickToFinish = false
+                }, 2000)
+                isDoubleClickToFinish = true
+            }
+        }
     }
 }

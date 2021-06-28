@@ -170,6 +170,12 @@ class AddBookActivity : BaseActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
+
+        if (Firebase.auth.currentUser?.email != Constant.ADMIN.email()) {
+            startActivity(Intent(this, HomeActivity::class.java))
+            finish()
+            return
+        }
         intent?.getParcelableExtra<Uri?>(Intent.EXTRA_STREAM)?.let {
             mFileUri = it
             mBinding.tvFileName.text = mFileUri!!.lastPathSegment

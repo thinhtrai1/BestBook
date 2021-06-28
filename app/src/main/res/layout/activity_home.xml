@@ -224,6 +224,28 @@
                     </FrameLayout>
 
                     <FrameLayout
+                        android:id="@+id/viewUpdateProfile"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:foreground="@drawable/ripple"
+                        android:visibility="gone">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="2dp"
+                            android:background="@color/white" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="@dimen/margin_12"
+                            android:text="@string/update_profile"
+                            android:textColor="@color/white"
+                            android:textSize="@dimen/text_large"
+                            android:textStyle="bold|italic" />
+                    </FrameLayout>
+
+                    <FrameLayout
                         android:id="@+id/viewAbout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

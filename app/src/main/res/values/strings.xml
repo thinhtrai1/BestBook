@@ -12,6 +12,7 @@
     <string name="register">Đăng ký</string>
     <string name="register_successfully">Đăng ký thành công!</string>
     <string name="notification">Thông báo</string>
+    <string name="update_profile">Cập nhật hồ sơ</string>
     <string name="username">Tên đăng nhập</string>
     <string name="password">Mật khẩu</string>
     <string name="login_unsuccessfully">Đăng nhập không thành công!</string>
@@ -21,7 +22,7 @@
     <string name="an_error_occurred_please_try_again">Đã có lỗi. Vui lòng thử lại</string>
     <string name="no_data">Không có dữ liệu</string>
     <string name="data_error">Lỗi dữ liệu</string>
-    <string name="about_message">Founder:\nBùi Vân Ngọc Bích\n\nDevelopers:\nNguyễn Đức Thịnh\n\nContact:\nfb.com/ducthinhtrai\n\nCreated at 23/06/2021</string>
+    <string name="about_message">Founder:\nBùi Vân Ngọc Bích\n\nDeveloper:\nNguyễn Đức Thịnh\n\nContact:\nfb.com/ducthinhtrai\n\nCreated at 23/06/2021</string>
     <string name="my_name">Tên của bé</string>
     <string name="my_grade">Lớp của bé</string>
     <string name="phone">Số điện thoại</string>
@@ -37,4 +38,8 @@
     <string name="last_page">Trang cuối</string>
     <string name="show">hiện</string>
     <string name="hide">ẩn</string>
+    <string name="tap_again_to_exit">Tap again to exit</string>
+    <string name="update">Cập nhật</string>
+    <string name="update_profile_successfully">Cập nhật hồ sơ thành công</string>
+    <string name="wrong_password">Sai mật khẩu!</string>
 </resources>
