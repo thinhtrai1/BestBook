@@ -114,7 +114,7 @@ class AddBookActivity : BaseActivity() {
             }
 
             mViewModel.data?.let { book ->
-                if (book.id == null || mViewModel.subject == null || mViewModel.grade == null || mViewModel.grade!! >= mViewModel.subjectData.size) {
+                if (book.id == null || mViewModel.subject == null || mViewModel.grade == null || mViewModel.grade!! > mViewModel.subjectData.size) {
                     showToast(getString(R.string.data_error))
                     finish()
                     return
@@ -242,7 +242,7 @@ class AddBookActivity : BaseActivity() {
 
     private fun updateImage() {
         showLoading(true)
-        val subjectId = mViewModel.subjectData[mViewModel.grade!!].first { it.name == mViewModel.subject }.id!!
+        val subjectId = mViewModel.subjectData[mViewModel.grade!! - 1].first { it.name == mViewModel.subject }.id!!
         if (mViewModel.imageUri != null) {
             Firebase.storage.getReferenceFromUrl(mViewModel.data!!.image!!).apply {
                 putFile(mViewModel.imageUri!!)

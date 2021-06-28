@@ -101,7 +101,7 @@ class UpdateSubjectActivity : BaseActivity() {
             }
 
             mViewModel.subject?.let { subject ->
-                if (subject.id == null || mViewModel.grade == null || mViewModel.grade!! >= mViewModel.subjectData.size) {
+                if (subject.id == null || mViewModel.grade == null || mViewModel.grade!! > mViewModel.subjectData.size) {
                     showToast(getString(R.string.data_error))
                     finish()
                     return
