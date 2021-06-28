@@ -42,4 +42,13 @@
     <string name="update">Cập nhật</string>
     <string name="update_profile_successfully">Cập nhật hồ sơ thành công</string>
     <string name="wrong_password">Sai mật khẩu!</string>
+    <string name="book_name">Book name</string>
+    <string name="start_page">Start page</string>
+    <string name="update_book">Update book</string>
+    <string name="success">Thành công</string>
+    <string name="missing_information">missing information</string>
+    <string name="crop">Crop</string>
+    <string name="rotate">Rotate</string>
+    <string name="flip_horizontal">Flip horizontal</string>
+    <string name="flip_vertical">Flip vertical</string>
 </resources>

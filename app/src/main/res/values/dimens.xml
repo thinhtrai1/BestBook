@@ -17,7 +17,4 @@
     <dimen name="avatar_size">64dp</dimen>
 
     <dimen name="icon_close_size">26dp</dimen>
-
-    <dimen name="thumbnail_160">160dp</dimen>
-    <dimen name="thumbnail_240">240dp</dimen>
 </resources>

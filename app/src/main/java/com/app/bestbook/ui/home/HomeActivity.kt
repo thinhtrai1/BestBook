@@ -33,7 +33,6 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.squareup.picasso.Picasso
 import java.io.Serializable
@@ -42,8 +41,6 @@ class HomeActivity : BaseActivity() {
     private lateinit var mBinding: ActivityHomeBinding
     private val mViewModel: HomeViewModel by viewModels()
     private val mConstraintSet = ConstraintSet()
-    private val mFirebaseDatabase = Firebase.database(Constant.FIREBASE_DATABASE).reference
-    private var mUser: User? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,7 +84,7 @@ class HomeActivity : BaseActivity() {
             }
             viewUpdateProfile.setOnClickListener {
                 startActivity(
-                    Intent(this@HomeActivity, RegisterActivity::class.java).putExtra("user", mUser)
+                    Intent(this@HomeActivity, RegisterActivity::class.java).putExtra("user", mViewModel.user)
                 )
             }
             viewLogout.setOnClickListener {
@@ -96,6 +93,7 @@ class HomeActivity : BaseActivity() {
                     .setNegativeButton(android.R.string.cancel, null)
                     .setPositiveButton(android.R.string.ok) { _, _ ->
                         Firebase.auth.signOut()
+                        mViewModel.user = null
                         mViewModel.sharedPreferencesHelper.getSharedPreferences().edit().clear().apply()
                         recreate()
                     }.show()
@@ -123,7 +121,7 @@ class HomeActivity : BaseActivity() {
 
         mViewModel.classData = { grade ->
             showLoading(true)
-            mFirebaseDatabase.child("data").child(grade.toString()).addListenerForSingleValueEvent(object : ValueEventListener {
+            mViewModel.firebaseDatabase.child("data").child(grade.toString()).addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onCancelled(error: DatabaseError) {
                     showToast(getString(R.string.an_error_occurred_please_try_again))
                     showLoading(false)
@@ -140,7 +138,8 @@ class HomeActivity : BaseActivity() {
                         startActivity(
                             Intent(this@HomeActivity, SubjectActivity::class.java)
                                 .putExtra("data", data as Serializable)
-                                .putExtra("grade", grade.toString())
+                                .putExtra("grade", grade)
+                                .putExtra("isAdmin", mViewModel.user?.isAdmin)
                         )
                     } else {
                         showToast(getString(R.string.no_data))
@@ -176,7 +175,7 @@ class HomeActivity : BaseActivity() {
     }
 
     private fun getInformation(googleUser: FirebaseUser, email: String, password: String) {
-        mFirebaseDatabase.child("user").child(googleUser.uid).addListenerForSingleValueEvent(object : ValueEventListener {
+        mViewModel.firebaseDatabase.child("user").child(googleUser.uid).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onCancelled(error: DatabaseError) {
                 showLoading(false)
                 showToast(getString(R.string.login_unsuccessfully))
@@ -186,8 +185,7 @@ class HomeActivity : BaseActivity() {
                 showLoading(false)
                 with(mBinding) {
                     snapshot.getValue(User::class.java)?.let {
-                        mUser = it
-                        mUser!!.id = googleUser.uid
+                        mViewModel.user = it.apply { id = googleUser.uid }
                         if (it.isAdmin) {
                             viewAddBook.visibility = View.VISIBLE
                             viewUpdateSubject.visibility = View.VISIBLE

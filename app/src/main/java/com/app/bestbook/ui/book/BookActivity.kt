@@ -7,6 +7,7 @@ import androidx.databinding.DataBindingUtil
 import com.app.bestbook.R
 import com.app.bestbook.base.BaseActivity
 import com.app.bestbook.databinding.ActivityBookBinding
+import com.app.bestbook.ui.addBook.AddBookActivity
 import com.app.bestbook.ui.read.ReadActivity
 
 class BookActivity : BaseActivity() {
@@ -17,13 +18,22 @@ class BookActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_book)
         mBinding.viewModel = mViewModel
-        mViewModel.adapter.onClickListener = {
-            startActivity(
-                Intent(this, ReadActivity::class.java)
-                    .putExtra("data", it)
-                    .putExtra("grade", mViewModel.grade)
-                    .putExtra("subject", mViewModel.subject)
-            )
+        mViewModel.adapter.onClickListener = { book, isRead ->
+            if (isRead) {
+                startActivity(
+                    Intent(this, ReadActivity::class.java)
+                        .putExtra("data", book)
+                        .putExtra("grade", mViewModel.grade)
+                        .putExtra("subject", mViewModel.subject)
+                )
+            } else {
+                startActivity(
+                    Intent(this, AddBookActivity::class.java)
+                        .putExtra("data", book)
+                        .putExtra("grade", mViewModel.grade)
+                        .putExtra("subject", mViewModel.subject)
+                )
+            }
         }
     }
 }

@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.core.app.ActivityCompat
 import androidx.databinding.DataBindingUtil
 import com.app.bestbook.R
@@ -18,7 +19,6 @@ import com.app.bestbook.base.BaseActivity
 import com.app.bestbook.databinding.ActivityAddBookBinding
 import com.app.bestbook.databinding.ProgressDialogCustomBinding
 import com.app.bestbook.model.Book
-import com.app.bestbook.model.Subject
 import com.app.bestbook.ui.cropImage.CropImageActivity
 import com.app.bestbook.ui.home.HomeActivity
 import com.app.bestbook.util.*
@@ -29,18 +29,13 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
+import com.squareup.picasso.Picasso
 import java.util.*
-import kotlin.collections.ArrayList
 
 class AddBookActivity : BaseActivity() {
     private lateinit var mBinding: ActivityAddBookBinding
-    private val mSubjectData = ArrayList<List<Subject>>()
-    private var mFileUri: Uri? = null
-    private var mImageUri: Uri? = null
-    private val mDatabaseReference = Firebase.database(Constant.FIREBASE_DATABASE).reference.child("data")
-    private val mStorageReference = Firebase.storage.reference
-    private var mBookUrl: String? = null
-    private var mImageUrl: String? = null
+    private val mViewModel: AddBookViewModel by viewModels()
+    private var mSpnSubjectIndex = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,8 +64,6 @@ class AddBookActivity : BaseActivity() {
         }
 
         with(mBinding) {
-            spnStartPage.adapter = ArrayAdapter(this@AddBookActivity, android.R.layout.simple_list_item_1, listOf("0", "1", "2", "3", "4", "5"))
-
             spnClass.adapter = ArrayAdapter(this@AddBookActivity, android.R.layout.simple_list_item_1, listOf("Select class", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"))
             spnClass.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onNothingSelected(parent: AdapterView<*>?) {
@@ -80,7 +73,10 @@ class AddBookActivity : BaseActivity() {
                     if (position == 0) {
                         spnSubject.adapter = ArrayAdapter(this@AddBookActivity, android.R.layout.simple_list_item_1, listOf("Select class"))
                     } else {
-                        spnSubject.adapter = ArrayAdapter(this@AddBookActivity, android.R.layout.simple_list_item_1, mSubjectData[position - 1].map { it.name })
+                        spnSubject.adapter = ArrayAdapter(this@AddBookActivity, android.R.layout.simple_list_item_1, mViewModel.subjectData[position - 1].map { it.name })
+                        if (mSpnSubjectIndex != -1) {
+                            spnSubject.setSelection(mSpnSubjectIndex)
+                        }
                     }
                 }
             }
@@ -102,69 +98,48 @@ class AddBookActivity : BaseActivity() {
             }
 
             btnAddBook.setOnClickListener {
-                val classSelected = spnClass.selectedItemPosition
-                if (mFileUri == null || mImageUri == null || classSelected == 0 || edtBookName.text.isBlank()) {
-                    showToast("missing information")
-                } else {
-                    val subjectSelected = mSubjectData[classSelected - 1][spnSubject.selectedItemPosition].id!!
-                    val binding: ProgressDialogCustomBinding
-                    val progressDialog = Dialog(this@AddBookActivity).apply {
-                        binding = ProgressDialogCustomBinding.inflate(LayoutInflater.from(this@AddBookActivity))
-                        setContentView(binding.root)
-                        setCancelable(false)
-                        window!!.setBackgroundDrawableResource(android.R.color.transparent)
-                        show()
-                        binding.tvMessage.text = getString(R.string.saving_book)
+                if (mViewModel.data != null) {
+                    if (edtBookName.text.isBlank()) {
+                        showToast(getString(R.string.missing_information))
+                    } else {
+                        updateImage()
                     }
-                    val reference = mStorageReference
-                        .child("book")
-                        .child(classSelected.toString())
-                        .child(subjectSelected)
-                        .child(tvFileName.text.toString())
-                    reference.putFile(mFileUri!!)
-                        .addOnProgressListener {
-                            binding.progressBarDownload.progress = 100f * it.bytesTransferred / it.totalByteCount
-                        }
-                        .addOnFailureListener {
-                            progressDialog.dismiss()
-                            showToast(it.message)
-                        }
-                        .addOnSuccessListener {
-                            reference.downloadUrl.addOnSuccessListener {
-                                mBookUrl = it.toString()
-                                if (mImageUrl != null) {
-                                    addBook(classSelected, subjectSelected, progressDialog)
-                                }
-                            }
-                        }
-                    mStorageReference
-                        .child("image")
-                        .child(classSelected.toString())
-                        .child(subjectSelected)
-                        .child(Calendar.getInstance().timeInMillis.toString()).apply {
-                            putFile(mImageUri!!)
-                                .addOnFailureListener {
-                                    progressDialog.dismiss()
-                                    showToast(it.message)
-                                }
-                                .addOnSuccessListener {
-                                    downloadUrl.addOnSuccessListener {
-                                        mImageUrl = it.toString()
-                                        if (mBookUrl != null) {
-                                            addBook(classSelected, subjectSelected, progressDialog)
-                                        }
-                                    }
-                                }
-                        }
+                } else {
+                    if (mViewModel.fileUri == null || mViewModel.imageUri == null || spnClass.selectedItemPosition == 0 || edtBookName.text.isBlank()) {
+                        showToast(getString(R.string.missing_information))
+                    } else {
+                        putFileAndImage()
+                    }
                 }
+            }
+
+            mViewModel.data?.let { book ->
+                if (book.id == null || mViewModel.subject == null || mViewModel.grade == null || mViewModel.grade!! >= mViewModel.subjectData.size) {
+                    showToast(getString(R.string.data_error))
+                    finish()
+                    return
+                }
+                btnSelectFile.visibility = View.GONE
+                tvFileName.visibility = View.GONE
+                spnClass.isEnabled = false
+                spnSubject.isEnabled = false
+                spnClass.setSelection(mViewModel.grade!!)
+                mSpnSubjectIndex = mViewModel.subjectData[mViewModel.grade!! - 1].indexOfFirst { it.name == mViewModel.subject }
+                if (mSpnSubjectIndex != -1) {
+                    spnSubject.setSelection(mSpnSubjectIndex)
+                }
+                book.image?.let {
+                    Picasso.get().load(it).resize(resources.getDimensionPixelSize(R.dimen.avatar_size), 0).centerCrop().into(imvImage)
+                }
+                edtBookName.setText(book.name)
+                edtStartPage.setText(book.startPage.toString())
+                btnAddBook.text = getString(R.string.update_book)
             }
         }
 
-        Utility.generateData(mSubjectData)
-
         intent.getParcelableExtra<Uri?>(Intent.EXTRA_STREAM)?.let {
-            mFileUri = it
-            mBinding.tvFileName.text = mFileUri!!.lastPathSegment
+            mViewModel.fileUri = it
+            mBinding.tvFileName.text = mViewModel.fileUri!!.lastPathSegment
         }
     }
 
@@ -177,33 +152,138 @@ class AddBookActivity : BaseActivity() {
             return
         }
         intent?.getParcelableExtra<Uri?>(Intent.EXTRA_STREAM)?.let {
-            mFileUri = it
-            mBinding.tvFileName.text = mFileUri!!.lastPathSegment
+            mViewModel.fileUri = it
+            mBinding.tvFileName.text = mViewModel.fileUri!!.lastPathSegment
         }
     }
 
-    private fun addBook(classSelected: Int, subjectSelected: String, progressDialog: Dialog) {
-        val subjectRef = mDatabaseReference
+    private fun putFileAndImage() {
+        val classSelected = mBinding.spnClass.selectedItemPosition
+        val subjectSelected = mViewModel.subjectData[classSelected - 1][mBinding.spnSubject.selectedItemPosition].id!!
+        val binding: ProgressDialogCustomBinding
+        val progressDialog = Dialog(this@AddBookActivity).apply {
+            binding = ProgressDialogCustomBinding.inflate(LayoutInflater.from(this@AddBookActivity))
+            setContentView(binding.root)
+            setCancelable(false)
+            window!!.setBackgroundDrawableResource(android.R.color.transparent)
+            show()
+            binding.tvMessage.text = getString(R.string.saving_book)
+        }
+        val reference = mViewModel.storageReference
+            .child("book")
             .child(classSelected.toString())
             .child(subjectSelected)
-        subjectRef.child("name").setValue(mSubjectData[classSelected - 1][mBinding.spnSubject.selectedItemPosition].name)
+            .child(mBinding.tvFileName.text.toString())
+        reference.putFile(mViewModel.fileUri!!)
+            .addOnProgressListener {
+                binding.progressBarDownload.progress = 100f * it.bytesTransferred / it.totalByteCount
+            }
+            .addOnFailureListener {
+                progressDialog.dismiss()
+                showToast(it.message)
+            }
+            .addOnSuccessListener {
+                reference.downloadUrl.addOnSuccessListener {
+                    mViewModel.bookUrl = it.toString()
+                    if (mViewModel.imageUrl != null) {
+                        addBook(classSelected, subjectSelected, progressDialog)
+                    }
+                }
+            }
+        mViewModel.storageReference
+            .child("image")
+            .child(classSelected.toString())
+            .child(subjectSelected)
+            .child(Calendar.getInstance().timeInMillis.toString()).apply {
+                putFile(mViewModel.imageUri!!)
+                    .addOnFailureListener {
+                        progressDialog.dismiss()
+                        showToast(it.message)
+                    }
+                    .addOnSuccessListener {
+                        downloadUrl.addOnSuccessListener {
+                            mViewModel.imageUrl = it.toString()
+                            if (mViewModel.bookUrl != null) {
+                                addBook(classSelected, subjectSelected, progressDialog)
+                            }
+                        }
+                    }
+            }
+    }
+
+    private fun addBook(classSelected: Int, subjectSelected: String, progressDialog: Dialog) {
+        val subjectRef = mViewModel.databaseReference
+            .child(classSelected.toString())
+            .child(subjectSelected)
+        subjectRef.child("name").setValue(mViewModel.subjectData[classSelected - 1][mBinding.spnSubject.selectedItemPosition].name)
         subjectRef.child("books").push().setValue(
             Book().apply {
                 name = mBinding.edtBookName.text.toString().trim()
-                url = mBookUrl!!
-                image = mImageUrl!!
-                startPage = mBinding.spnStartPage.selectedItemPosition
+                url = mViewModel.bookUrl!!
+                image = mViewModel.imageUrl!!
+                startPage = mBinding.edtStartPage.text.toString().toIntOrNull() ?: 0
                 time = Calendar.getInstance().timeInMillis
             }
-        )
-        progressDialog.dismiss()
-        mFileUri = null
-        mImageUri = null
-        mBinding.tvFileName.text = ""
-        mBinding.imvImage.setImageResource(0)
-        mBinding.spnClass.setSelection(0)
-        mBinding.spnStartPage.setSelection(0)
-        mBinding.edtBookName.text = null
+        ).addOnSuccessListener {
+            progressDialog.dismiss()
+            showToast(getString(R.string.success))
+            mViewModel.fileUri = null
+            mViewModel.imageUri = null
+            mBinding.tvFileName.text = ""
+            mBinding.imvImage.setImageResource(0)
+            mBinding.spnClass.setSelection(0)
+            mBinding.edtStartPage.setText("0")
+            mBinding.edtBookName.text = null
+        }.addOnFailureListener {
+            progressDialog.dismiss()
+            showToast(it.message)
+        }
+    }
+
+    private fun updateImage() {
+        showLoading(true)
+        val subjectId = mViewModel.subjectData[mViewModel.grade!!].first { it.name == mViewModel.subject }.id!!
+        if (mViewModel.imageUri != null) {
+            Firebase.storage.getReferenceFromUrl(mViewModel.data!!.image!!).apply {
+                putFile(mViewModel.imageUri!!)
+                    .addOnFailureListener {
+                        showLoading(false)
+                        showToast(it.message)
+                    }
+                    .addOnSuccessListener {
+                        downloadUrl.addOnSuccessListener {
+                            mViewModel.imageUrl = it.toString()
+                            updateBook(subjectId)
+                        }
+                    }
+            }
+        } else {
+            updateBook(subjectId)
+        }
+    }
+
+    private fun updateBook(subjectId: String) {
+        val book = Book().apply {
+            name = mBinding.edtBookName.text.toString().trim()
+            url = mViewModel.data!!.url
+            image = mViewModel.imageUrl ?: mViewModel.data!!.image
+            startPage = mBinding.edtStartPage.text.toString().toIntOrNull() ?: 0
+            time = mViewModel.data!!.time
+        }
+        mViewModel.databaseReference
+            .child(mViewModel.grade!!.toString())
+            .child(subjectId)
+            .child("books")
+            .child(mViewModel.data!!.id!!)
+            .setValue(book)
+            .addOnSuccessListener {
+                showLoading(false)
+                finish()
+            }
+            .addOnFailureListener {
+                showLoading(false)
+                showToast(it.message)
+            }
     }
 
     private fun openFile() {
@@ -217,7 +297,7 @@ class AddBookActivity : BaseActivity() {
                 cursor.moveToFirst()
                 mBinding.tvFileName.text = cursor.getString(nameIndex)
             }
-            mFileUri = it
+            mViewModel.fileUri = it
         }
     }
 
@@ -238,8 +318,8 @@ class AddBookActivity : BaseActivity() {
 
     private val mEditForResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         result.data?.data?.let {
-            mImageUri = it
-            mBinding.imvImage.setImageURI(mImageUri)
+            mViewModel.imageUri = it
+            mBinding.imvImage.setImageURI(mViewModel.imageUri)
         }
     }
 
