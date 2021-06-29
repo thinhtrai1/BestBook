@@ -308,6 +308,13 @@ class AddBookActivity : BaseActivity() {
     }
 
     private fun getFirstPage() {
+        fun showError() {
+            lifecycleScope.launch(Dispatchers.Main) {
+                showLoading(false)
+                showToast(getString(R.string.pdf_has_been_corrupted))
+            }
+        }
+
         showLoading(true)
         lifecycleScope.launch(Dispatchers.IO) {
             val file = File(cacheDir, "temp.pdf")
@@ -321,33 +328,35 @@ class AddBookActivity : BaseActivity() {
                 try {
                     PdfRenderer(descriptor)
                 } catch (e: IOException) {
-                    showToast(getString(R.string.pdf_has_been_corrupted))
+                    showError()
                     return@launch
                 }.let { renderer ->
-                    if (renderer.pageCount > 0) {
-                        renderer.openPage(0).use {
-                            try {
-                                Bitmap.createBitmap(it.width, it.height, Bitmap.Config.ARGB_8888)
-                            } catch (e: OutOfMemoryError) {
-                                showToast(getString(R.string.pdf_has_been_corrupted))
-                                return@launch
-                            }.also { bitmap ->
-                                it.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                            }
-                        }.let { bitmap ->
-                            file.outputStream().use { outputStream ->
-                                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
-                                bitmap.recycle()
-                            }
+                    if (renderer.pageCount == 0) {
+                        showError()
+                        return@launch
+                    }
+                    renderer.openPage(0).use {
+                        try {
+                            Bitmap.createBitmap(it.width, it.height, Bitmap.Config.ARGB_8888)
+                        } catch (e: OutOfMemoryError) {
+                            showError()
+                            return@launch
+                        }.also { bitmap ->
+                            it.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                         }
-                        lifecycleScope.launch(Dispatchers.Main) {
-                            showLoading(false)
-                            editImage(Uri.fromFile(file))
+                    }.let { bitmap ->
+                        file.outputStream().use { outputStream ->
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                            bitmap.recycle()
                         }
                     }
                 }
+                lifecycleScope.launch(Dispatchers.Main) {
+                    showLoading(false)
+                    editImage(Uri.fromFile(file))
+                }
             } else {
-                showToast(getString(R.string.pdf_has_been_corrupted))
+                showError()
             }
         }
     }

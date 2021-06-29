@@ -43,4 +43,14 @@ abstract class BaseActivity : AppCompatActivity() {
         super.finish()
         overridePendingTransition(R.anim.scale_left_to_right_in, R.anim.scale_left_to_right_out)
     }
+
+    override fun startActivityForResult(intent: Intent?, requestCode: Int, options: Bundle?) {
+        super.startActivityForResult(intent, requestCode, options)
+        overridePendingTransition(R.anim.scale_right_to_left_in, R.anim.scale_right_to_left_out)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        overridePendingTransition(R.anim.scale_left_to_right_in, R.anim.scale_left_to_right_out)
+    }
 }

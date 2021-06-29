@@ -13,7 +13,9 @@ import android.view.animation.Animation
 import android.view.animation.Transformation
 import android.widget.FrameLayout
 import android.widget.ImageView
+import androidx.databinding.DataBindingUtil
 import com.app.bestbook.R
+import com.app.bestbook.databinding.CropImageViewBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -52,10 +54,10 @@ class CropImageView(context: Context, attrs: AttributeSet?) : FrameLayout(contex
         val ta = context.obtainStyledAttributes(attrs, R.styleable.CropImageView, 0, 0)
         mScaleType = ScaleType.values()[ta.getInt(R.styleable.CropImageView_cropScaleType, ScaleType.FIT_CENTER.ordinal)]
         mAutoZoomEnabled = ta.getBoolean(R.styleable.CropImageView_cropAutoZoomEnabled, true)
-        val v = LayoutInflater.from(context).inflate(R.layout.crop_image_view, this, true)
-        mImageView = v.findViewById(R.id.ImageView_image)
-        mImageView.scaleType = ImageView.ScaleType.MATRIX
-        mCropOverlayView = v.findViewById(R.id.CropOverlayView)
+        DataBindingUtil.inflate<CropImageViewBinding>(LayoutInflater.from(context), R.layout.crop_image_view, this, true).let {
+            mImageView = it.imageViewImage
+            mCropOverlayView = it.cropOverlayView
+        }
         mCropOverlayView.setInitialAttributeValues(ta)
         mCropOverlayView.setOnCropWindowChanged {
             handleCropWindowChanged(it, true)
