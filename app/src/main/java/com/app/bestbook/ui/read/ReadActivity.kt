@@ -20,11 +20,13 @@ class ReadActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        mBinding = DataBindingUtil.setContentView(this, R.layout.activity_read)
-        if (mViewModel.book?.url == null) {
+        if (mViewModel.book?.url == null && mViewModel.pdfFile == null) {
             showToast(getString(R.string.data_error))
+            finish()
             return
         }
+
+        mBinding = DataBindingUtil.setContentView(this, R.layout.activity_read)
         supportActionBar?.title = mViewModel.subject + " " + mViewModel.grade + " - " + mViewModel.book!!.name
 
         if (mViewModel.pdfFile == null) {

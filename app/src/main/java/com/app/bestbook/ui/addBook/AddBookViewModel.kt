@@ -19,7 +19,7 @@ class AddBookViewModel(savedStateHandle: SavedStateHandle) : BaseViewModel() {
     val subjectData = ArrayList<List<Subject>>().apply { Utility.generateData(this) }
     val databaseReference = Firebase.database(Constant.FIREBASE_DATABASE).reference.child("data")
     val storageReference = Firebase.storage.reference
-    var fileUri: Uri? = null
+    var fileUri: Uri? = savedStateHandle.get<Uri>("uri")
     var imageUri: Uri? = null
     var bookUrl: String? = null
     var imageUrl: String? = null

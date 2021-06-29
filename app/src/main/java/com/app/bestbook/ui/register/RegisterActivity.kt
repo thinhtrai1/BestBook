@@ -9,7 +9,6 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.core.app.ActivityCompat
 import androidx.core.content.FileProvider
 import androidx.databinding.DataBindingUtil
 import com.app.bestbook.R
@@ -101,14 +100,14 @@ class RegisterActivity: BaseActivity() {
                     if (isPermissionGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
                         pickImage()
                     } else {
-                        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 0)
+                        requestPermission(0, Manifest.permission.READ_EXTERNAL_STORAGE)
                     }
                 }
                 .setNegativeButton(getString(R.string.take_a_picture)) { _, _ ->
                     if (isPermissionGranted(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
                         takeImage()
                     } else {
-                        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
+                        requestPermission(1, Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     }
                 }
                 .setTitle(getString(R.string.select_image))

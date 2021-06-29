@@ -1,6 +1,7 @@
 package com.app.bestbook.ui.splash
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -27,7 +28,7 @@ class SplashActivity : AppCompatActivity() {
             }
 
             override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.value == "test") {
+                if (snapshot.value == "test1") {
                     if (isValid) {
                         startHome()
                     } else {
@@ -54,7 +55,10 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun startHome() {
-        startActivity(Intent(this, HomeActivity::class.java))
+        startActivity(
+            Intent(this, HomeActivity::class.java)
+                .putExtra("uri", intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))
+        )
         finish()
     }
 }

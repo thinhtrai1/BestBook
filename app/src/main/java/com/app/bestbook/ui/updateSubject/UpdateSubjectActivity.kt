@@ -11,7 +11,6 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.core.app.ActivityCompat
 import androidx.databinding.DataBindingUtil
 import com.app.bestbook.R
 import com.app.bestbook.base.BaseActivity
@@ -19,6 +18,7 @@ import com.app.bestbook.databinding.ActivityUpdateSubjectBinding
 import com.app.bestbook.databinding.ProgressDialogCustomBinding
 import com.app.bestbook.ui.cropImage.CropImageActivity
 import com.app.bestbook.util.isPermissionGranted
+import com.app.bestbook.util.requestPermission
 import com.app.bestbook.util.showToast
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
@@ -55,7 +55,7 @@ class UpdateSubjectActivity : BaseActivity() {
                 if (isPermissionGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
                     pickImage()
                 } else {
-                    ActivityCompat.requestPermissions(this@UpdateSubjectActivity, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 101)
+                    requestPermission(101, Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
             }
 

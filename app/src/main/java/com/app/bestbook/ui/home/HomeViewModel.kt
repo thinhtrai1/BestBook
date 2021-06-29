@@ -13,17 +13,14 @@ class HomeViewModel : BaseViewModel() {
     var user: User? = null
 
     val adapter1 = HomeRcvAdapter(listOf(1, 2, 3, 4, 5)) {
-        getData(it)
+        classData(it)
     }
     val adapter2 = HomeRcvAdapter(listOf(6, 7, 8, 9)) {
-        getData(it)
+        classData(it)
     }
     val adapter3 = HomeRcvAdapter(listOf(10, 11, 12)) {
-        getData(it)
+        classData(it)
     }
-    lateinit var classData: (Int) -> Unit
 
-    private fun getData(classSelected: Int) {
-        classData.invoke(classSelected)
-    }
+    lateinit var classData: (Int) -> Unit
 }

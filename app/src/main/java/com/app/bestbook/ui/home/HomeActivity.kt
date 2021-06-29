@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -22,6 +23,7 @@ import com.app.bestbook.databinding.DialogAboutBinding
 import com.app.bestbook.model.Subject
 import com.app.bestbook.model.User
 import com.app.bestbook.ui.addBook.AddBookActivity
+import com.app.bestbook.ui.read.ReadActivity
 import com.app.bestbook.ui.register.RegisterActivity
 import com.app.bestbook.ui.subject.SubjectActivity
 import com.app.bestbook.ui.updateSubject.UpdateSubjectActivity
@@ -42,11 +44,31 @@ class HomeActivity : BaseActivity() {
     private val mViewModel: HomeViewModel by viewModels()
     private val mConstraintSet = ConstraintSet()
 
+    private fun checkSharedStreamUri(intent: Intent?) {
+        intent?.getParcelableExtra<Uri>("uri")?.let {
+            if (Firebase.auth.currentUser?.email != Constant.ADMIN.email()) {
+                startActivity(
+                    Intent(this, ReadActivity::class.java).putExtra("uri", it)
+                )
+            } else {
+                startActivity(
+                    Intent(this, AddBookActivity::class.java).putExtra("uri", it)
+                )
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        checkSharedStreamUri(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        checkSharedStreamUri(intent)
         supportActionBar?.hide()
-        mBinding = DataBindingUtil.setContentView(this, R.layout.activity_home)
 
+        mBinding = DataBindingUtil.setContentView(this, R.layout.activity_home)
         with(mBinding) {
             viewModel = mViewModel
             toolbar.setTitleTextColor(Color.WHITE)

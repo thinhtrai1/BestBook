@@ -12,7 +12,6 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.core.app.ActivityCompat
 import androidx.databinding.DataBindingUtil
 import com.app.bestbook.R
 import com.app.bestbook.base.BaseActivity
@@ -20,9 +19,7 @@ import com.app.bestbook.databinding.ActivityAddBookBinding
 import com.app.bestbook.databinding.ProgressDialogCustomBinding
 import com.app.bestbook.model.Book
 import com.app.bestbook.ui.cropImage.CropImageActivity
-import com.app.bestbook.ui.home.HomeActivity
 import com.app.bestbook.util.*
-import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
@@ -42,11 +39,6 @@ class AddBookActivity : BaseActivity() {
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_add_book)
         supportActionBar?.title = getString(R.string.add_book)
 
-        if (Firebase.auth.currentUser?.email != Constant.ADMIN.email()) {
-            startActivity(Intent(this, HomeActivity::class.java))
-            finish()
-            return
-        }
         if (intent.action == Intent.ACTION_SEND) {
             Firebase.database(Constant.FIREBASE_DATABASE).reference.child("token").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onCancelled(error: DatabaseError) {
@@ -55,7 +47,7 @@ class AddBookActivity : BaseActivity() {
                 }
 
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.value != "test") {
+                    if (snapshot.value != "test1") {
                         showToast("The app has been blocked by the developer!")
                         finish()
                     }
@@ -64,6 +56,8 @@ class AddBookActivity : BaseActivity() {
         }
 
         with(mBinding) {
+            tvFileName.text = mViewModel.fileUri?.lastPathSegment
+
             spnClass.adapter = ArrayAdapter(this@AddBookActivity, android.R.layout.simple_list_item_1, listOf("Select class", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"))
             spnClass.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onNothingSelected(parent: AdapterView<*>?) {
@@ -83,7 +77,7 @@ class AddBookActivity : BaseActivity() {
 
             btnSelectFile.setOnClickListener {
                 if (isPermissionGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
-                    ActivityCompat.requestPermissions(this@AddBookActivity, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 100)
+                    requestPermission(100, Manifest.permission.READ_EXTERNAL_STORAGE)
                 } else {
                     openFile()
                 }
@@ -93,7 +87,7 @@ class AddBookActivity : BaseActivity() {
                 if (isPermissionGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
                     pickImage()
                 } else {
-                    ActivityCompat.requestPermissions(this@AddBookActivity, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 101)
+                    requestPermission(101, Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
             }
 
@@ -135,25 +129,6 @@ class AddBookActivity : BaseActivity() {
                 edtStartPage.setText(book.startPage.toString())
                 btnAddBook.text = getString(R.string.update_book)
             }
-        }
-
-        intent.getParcelableExtra<Uri?>(Intent.EXTRA_STREAM)?.let {
-            mViewModel.fileUri = it
-            mBinding.tvFileName.text = mViewModel.fileUri!!.lastPathSegment
-        }
-    }
-
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-
-        if (Firebase.auth.currentUser?.email != Constant.ADMIN.email()) {
-            startActivity(Intent(this, HomeActivity::class.java))
-            finish()
-            return
-        }
-        intent?.getParcelableExtra<Uri?>(Intent.EXTRA_STREAM)?.let {
-            mViewModel.fileUri = it
-            mBinding.tvFileName.text = mViewModel.fileUri!!.lastPathSegment
         }
     }
 
