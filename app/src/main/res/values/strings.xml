@@ -51,4 +51,7 @@
     <string name="rotate">Rotate</string>
     <string name="flip_horizontal">Flip horizontal</string>
     <string name="flip_vertical">Flip vertical</string>
+    <string name="please_select_the_book_first">Please select the book first</string>
+    <string name="pdf_has_been_corrupted">Pdf has been corrupted</string>
+    <string name="get_first_page">Lấy trang bìa</string>
 </resources>

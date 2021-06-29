@@ -1,10 +1,14 @@
 package com.app.bestbook.ui.addBook
 
 import android.Manifest
+import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
 import android.view.LayoutInflater
 import android.view.View
@@ -13,6 +17,7 @@ import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.lifecycleScope
 import com.app.bestbook.R
 import com.app.bestbook.base.BaseActivity
 import com.app.bestbook.databinding.ActivityAddBookBinding
@@ -27,6 +32,10 @@ import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
 import com.squareup.picasso.Picasso
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.File
+import java.io.IOException
 import java.util.*
 
 class AddBookActivity : BaseActivity() {
@@ -84,10 +93,22 @@ class AddBookActivity : BaseActivity() {
             }
 
             btnSelectImage.setOnClickListener {
-                if (isPermissionGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
-                    pickImage()
+                if (mViewModel.fileUri == null) {
+                    showToast(getString(R.string.please_select_the_book_first))
                 } else {
-                    requestPermission(101, Manifest.permission.READ_EXTERNAL_STORAGE)
+                    AlertDialog.Builder(this@AddBookActivity)
+                    .setPositiveButton(getString(R.string.from_gallery)) { _, _ ->
+                        if (isPermissionGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                            pickImage()
+                        } else {
+                            requestPermission(101, Manifest.permission.READ_EXTERNAL_STORAGE)
+                        }
+                    }
+                    .setNegativeButton(getString(R.string.get_first_page)) { _, _ ->
+                        getFirstPage()
+                    }
+                    .setTitle(getString(R.string.select_image))
+                    .show()
                 }
             }
 
@@ -283,6 +304,51 @@ class AddBookActivity : BaseActivity() {
     private val mPickForResult = registerForActivityResult(ActivityResultContracts.GetContent()) {
         it?.let {
             editImage(it)
+        }
+    }
+
+    private fun getFirstPage() {
+        showLoading(true)
+        lifecycleScope.launch(Dispatchers.IO) {
+            val file = File(cacheDir, "temp.pdf")
+            contentResolver.openInputStream(mViewModel.fileUri!!)?.use { inputStream ->
+                file.outputStream().use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+            val descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            if (descriptor.statSize > 0L) {
+                try {
+                    PdfRenderer(descriptor)
+                } catch (e: IOException) {
+                    showToast(getString(R.string.pdf_has_been_corrupted))
+                    return@launch
+                }.let { renderer ->
+                    if (renderer.pageCount > 0) {
+                        renderer.openPage(0).use {
+                            try {
+                                Bitmap.createBitmap(it.width, it.height, Bitmap.Config.ARGB_8888)
+                            } catch (e: OutOfMemoryError) {
+                                showToast(getString(R.string.pdf_has_been_corrupted))
+                                return@launch
+                            }.also { bitmap ->
+                                it.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                            }
+                        }.let { bitmap ->
+                            file.outputStream().use { outputStream ->
+                                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                                bitmap.recycle()
+                            }
+                        }
+                        lifecycleScope.launch(Dispatchers.Main) {
+                            showLoading(false)
+                            editImage(Uri.fromFile(file))
+                        }
+                    }
+                }
+            } else {
+                showToast(getString(R.string.pdf_has_been_corrupted))
+            }
         }
     }
 

@@ -8,10 +8,11 @@ import android.os.ParcelFileDescriptor
 import android.util.AttributeSet
 import android.util.LruCache
 import android.view.*
-import android.widget.ImageView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.app.bestbook.R
+import com.app.bestbook.databinding.ItemRcvPdfPageBinding
+import com.app.bestbook.util.getString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -22,7 +23,7 @@ import java.io.IOException
 import java.net.URL
 
 class PdfRendererView(private val mContext: Context, attrs: AttributeSet?) : RecyclerView(mContext, attrs) {
-    private val mAdapter = Adapter(mContext, null, 2F)
+    private val mAdapter = Adapter(mContext, null)
     private var mFilePath: String? = null
 
     init {
@@ -39,11 +40,6 @@ class PdfRendererView(private val mContext: Context, attrs: AttributeSet?) : Rec
 
     fun setStatusListener(listener: StatusListener?): PdfRendererView {
         mAdapter.listener = listener
-        return this
-    }
-
-    fun setRatio(ratio: Float): PdfRendererView {
-        mAdapter.ratio = if (ratio > 0) ratio else 1F
         return this
     }
 
@@ -93,7 +89,7 @@ class PdfRendererView(private val mContext: Context, attrs: AttributeSet?) : Rec
         mAdapter.closeRender()
     }
 
-    private class Adapter(private val mContext: Context, var listener: StatusListener?, var ratio: Float) : RecyclerView.Adapter<Adapter.ViewHolder>() {
+    private class Adapter(private val mContext: Context, var listener: StatusListener?) : RecyclerView.Adapter<Adapter.ViewHolder>() {
         private var mPdfRenderer: PdfRenderer? = null
         private var isDisplayed = false
         private val mSavedBitmap = object : LruCache<Int, Bitmap>((Runtime.getRuntime().maxMemory() / 1024).toInt() / 2) {
@@ -110,11 +106,11 @@ class PdfRendererView(private val mContext: Context, attrs: AttributeSet?) : Rec
                     isDisplayed = false
                 } catch (e: IOException) {
                     mPdfRenderer = null
-                    listener?.onError(Throwable("Pdf has been corrupted"))
+                    listener?.onError(Throwable(getString(R.string.pdf_has_been_corrupted)))
                 }
             } else {
                 mPdfRenderer = null
-                listener?.onError(Throwable("Pdf has been corrupted"))
+                listener?.onError(Throwable(getString(R.string.pdf_has_been_corrupted)))
             }
             mSavedBitmap.evictAll()
             notifyDataSetChanged()
@@ -125,7 +121,7 @@ class PdfRendererView(private val mContext: Context, attrs: AttributeSet?) : Rec
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            return ViewHolder(LayoutInflater.from(mContext).inflate(R.layout.item_rcv_pdf_page, parent, false))
+            return ViewHolder(ItemRcvPdfPageBinding.inflate(LayoutInflater.from(mContext), parent, false))
         }
 
         override fun getItemCount(): Int {
@@ -133,31 +129,30 @@ class PdfRendererView(private val mContext: Context, attrs: AttributeSet?) : Rec
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            mSavedBitmap[position]?.let {
-                holder.view.visibility = View.VISIBLE
-                holder.view.findViewById<ImageView>(R.id.imvPage).setImageBitmap(it)
+            val adapterPosition = holder.adapterPosition
+            mSavedBitmap[adapterPosition]?.let {
+                holder.view.imvPage.setImageBitmap(it)
                 return
             }
-            holder.view.visibility = View.INVISIBLE
+            holder.view.imvPage.setImageResource(R.drawable.ic_book_holder_alpha)
             GlobalScope.launch(Dispatchers.IO) {
                 synchronized(mPdfRenderer!!) {
                     try {
-                        mPdfRenderer!!.openPage(position)
+                        mPdfRenderer!!.openPage(adapterPosition)
                     } catch (e: IllegalStateException) {
                         return@launch
-                    }.apply {
-                        val bitmap = try {
-                            Bitmap.createBitmap((width * ratio).toInt(), (height * ratio).toInt(), Bitmap.Config.ARGB_8888)
+                    }.use {
+                        try {
+                            Bitmap.createBitmap(it.width * 2, it.height * 2, Bitmap.Config.ARGB_8888)
                         } catch (e: OutOfMemoryError) {
-                            close()
                             return@launch
+                        }.also { bitmap ->
+                            it.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                         }
-                        render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                        close()
-                        mSavedBitmap.put(position, bitmap)
+                    }.let { bitmap ->
+                        mSavedBitmap.put(adapterPosition, bitmap)
                         GlobalScope.launch(Dispatchers.Main) {
-                            holder.view.visibility = View.VISIBLE
-                            holder.view.findViewById<ImageView>(R.id.imvPage).setImageBitmap(bitmap)
+                            holder.view.imvPage.setImageBitmap(bitmap)
                             if (!isDisplayed) {
                                 isDisplayed = true
                                 listener?.onDisplay()
@@ -168,7 +163,7 @@ class PdfRendererView(private val mContext: Context, attrs: AttributeSet?) : Rec
             }
         }
 
-        private class ViewHolder(val view: View) : RecyclerView.ViewHolder(view)
+        private class ViewHolder(val view: ItemRcvPdfPageBinding) : RecyclerView.ViewHolder(view.root)
     }
 
     private var mActivePointerId = -1
