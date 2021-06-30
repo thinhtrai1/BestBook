@@ -39,8 +39,8 @@ class ReadActivity : BaseActivity() {
                 show()
             }
             mBinding.pdfView.setStatusListener(object : PdfRendererView.StatusListener {
-                override fun onDownloadProgress(progress: Int) {
-                    binding.progressBarDownload.progress = progress.toFloat()
+                override fun onDownloadProgress(progress: Float) {
+                    binding.progressBarDownload.progress = progress
                 }
 
                 override fun onDisplay() {
@@ -82,7 +82,7 @@ class ReadActivity : BaseActivity() {
                     btnOk.setOnClickListener {
                         dismiss()
                         edtPageNumber.text.toString().toIntOrNull()?.let {
-                            mBinding.pdfView.scrollToPosition(it)
+                            mBinding.pdfView.scrollToPosition(it + mViewModel.book!!.startPage)
                         }
                         edtPageNumber.setText("")
                     }

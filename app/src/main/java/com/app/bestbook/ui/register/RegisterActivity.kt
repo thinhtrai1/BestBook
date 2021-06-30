@@ -143,6 +143,7 @@ class RegisterActivity: BaseActivity() {
                     phone = mBinding.edtPhone.text.toString().trim()
                     grade = mBinding.edtGrade.text.toString().trim()
                     image = imageUrl
+                    isAdmin = mViewModel.user?.isAdmin == true
                 }
             )
             .addOnSuccessListener {

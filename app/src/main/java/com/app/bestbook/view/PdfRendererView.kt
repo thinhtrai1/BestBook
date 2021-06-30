@@ -48,7 +48,7 @@ class PdfRendererView(private val mContext: Context, attrs: AttributeSet?) : Rec
     fun getTotalPage() = mAdapter.itemCount
 
     fun renderUrl(url: String) {
-        mAdapter.listener?.onDownloadProgress(0)
+        mAdapter.listener?.onDownloadProgress(0F)
         GlobalScope.launch(Dispatchers.IO) {
             val file = File(mContext.cacheDir, "temp.pdf")
             try {
@@ -64,7 +64,7 @@ class PdfRendererView(private val mContext: Context, attrs: AttributeSet?) : Rec
                             outputStream.write(bytesBuffer, 0, bytes)
                             bytesCopied += bytes
                             GlobalScope.launch(Dispatchers.Main) {
-                                mAdapter.listener?.onDownloadProgress(bytesCopied * 100 / totalLength)
+                                mAdapter.listener?.onDownloadProgress(bytesCopied * 100F / totalLength)
                             }
                         }
                     }
@@ -250,7 +250,7 @@ class PdfRendererView(private val mContext: Context, attrs: AttributeSet?) : Rec
     }
 
     interface StatusListener {
-        fun onDownloadProgress(progress: Int) {}
+        fun onDownloadProgress(progress: Float) {}
         fun onDownloadSuccess() {}
         fun onDisplay() {}
         fun onError(error: Throwable) {}

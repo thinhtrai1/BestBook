@@ -38,8 +38,10 @@ class CircularProgressBar(context: Context, attrs: AttributeSet? = null) : View(
     //region Attributes
     var progress: Float = 0f
         set(value) {
-            field = if (progress <= progressMax) value else progressMax
-            invalidate()
+            if (value != progress) {
+                field = if (progress <= progressMax) value else progressMax
+                invalidate()
+            }
         }
     var progressMax: Float = DEFAULT_MAX_VALUE
         set(value) {
